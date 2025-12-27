@@ -1,7 +1,7 @@
 {
   "name": "formora",
   "version": "0.1.0",
-  "description": "Type-safe, headless form validation for React",
+  "description": "Type-safe, headless form state and validation for React",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,24 @@
   "files": [
     "dist"
   ],
-  "author": "",
+  "author": "Narek (https://github.com/narek-webdev)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/narek-webdev/formora.git"
+  },
+  "homepage": "https://github.com/narek-webdev/formora#readme",
+  "bugs": {
+    "url": "https://github.com/narek-webdev/formora/issues"
+  },
+  "keywords": [
+    "react",
+    "form",
+    "forms",
+    "validation",
+    "form-state",
+    "hooks",
+    "react-hooks"
+  ],
   "sideEffects": false,
   "license": "MIT",
   "scripts": {
