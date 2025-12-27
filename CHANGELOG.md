@@ -8,15 +8,16 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Added
 
-- (placeholder)
+- Design principles section added to README to clarify Formora’s philosophy and scope.
+- Playground documentation explaining local development and usage.
 
 ### Changed
 
-- (placeholder)
+- Updated roadmap to reflect current features and realistic future plans.
 
 ### Fixed
 
-- (placeholder)
+- (none)
 
 ---
 
