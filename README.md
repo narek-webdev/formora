@@ -1,5 +1,9 @@
 # formora
 
+[![npm version](https://img.shields.io/npm/v/formora.svg)](https://www.npmjs.com/package/formora)
+[![CI](https://github.com/narek-webdev/formora/actions/workflows/ci.yml/badge.svg)](https://github.com/narek-webdev/formora/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A **headless form state and validation hook for React**.
 
 `formora` helps you manage form values, track user interaction, and validate inputs with a clean, type-safe API — without enforcing any UI structure.
