@@ -35,9 +35,9 @@ export function useFormValidation<T extends Record<string, any>>(
     });
   }
 
-  function validateField(name: keyof T, nextValues: T) {
+  function getFieldError(name: keyof T, nextValues: T): string | undefined {
     const rules = rulesRef.current.get(name);
-    if (!rules) return true;
+    if (!rules) return undefined;
 
     if (rules.required) {
       const msg =
@@ -49,27 +49,31 @@ export function useFormValidation<T extends Record<string, any>>(
       const empty =
         value === null ||
         value === undefined ||
-        (typeof value === "string" && value.trim() === "");
+        (typeof value === "string" && value.trim() === "") ||
+        (Array.isArray(value) && value.length === 0);
 
-      if (empty) {
-        setFieldError(name, msg);
-        return false;
-      }
+      if (empty) return msg;
     }
 
-    setFieldError(name, undefined);
-    return true;
+    return undefined;
+  }
+
+  function validateField(name: keyof T, nextValues: T) {
+    const msg = getFieldError(name, nextValues);
+    setFieldError(name, msg);
+    return !msg;
   }
 
   function validateAll(nextValues: T) {
-    let ok = true;
+    const nextErrors: Errors<T> = {};
 
     for (const name of rulesRef.current.keys()) {
-      const valid = validateField(name, nextValues);
-      if (!valid) ok = false;
+      const msg = getFieldError(name, nextValues);
+      if (msg) nextErrors[name] = msg;
     }
 
-    return ok;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   }
 
   function touchAllRegisteredFields() {
@@ -93,7 +97,13 @@ export function useFormValidation<T extends Record<string, any>>(
       if (ok) {
         onValid(values);
       } else {
-        onInvalid?.(errors);
+        // validateAll already updated state; also compute a snapshot to pass to callback
+        const nextErrors: Errors<T> = {};
+        for (const name of rulesRef.current.keys()) {
+          const msg = getFieldError(name, values);
+          if (msg) nextErrors[name] = msg;
+        }
+        onInvalid?.(nextErrors);
       }
     };
   }
@@ -121,7 +131,10 @@ export function useFormValidation<T extends Record<string, any>>(
         setTouched((prev) => ({ ...prev, [name]: true }));
 
         if (validateOn === "blur") {
-          validateField(name, values);
+          setValues((prev) => {
+            validateField(name, prev);
+            return prev;
+          });
         }
       },
     };

@@ -1,6 +1,6 @@
 {
   "name": "valido-react",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Type-safe, headless form validation for React",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
