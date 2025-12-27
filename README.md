@@ -127,6 +127,37 @@ npm run test
 
 ---
 
+## 🧩 Playground
+
+This repository includes a small **Vite + React playground** used to manually test `formora` in a real application environment.
+
+The playground demonstrates:
+
+- Sync validation rules
+- Async validation (race-condition safe)
+- Field-level `validating` state
+- Submit behavior while async validation is in progress
+
+### Run the playground locally
+
+In one terminal (build the library in watch mode):
+
+```bash
+npm run build -- --watch
+```
+
+In another terminal (start the playground dev server):
+
+```bash
+cd playground
+npm install
+npm run dev
+```
+
+> 💡 The playground uses `formora` via a local `file:..` dependency. If you change the library build output, you may need to reinstall dependencies inside `playground/`.
+
+---
+
 ## 🗺 Roadmap
 
 Planned features:
