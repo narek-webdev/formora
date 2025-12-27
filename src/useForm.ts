@@ -9,6 +9,7 @@ type Errors<T> = Partial<Record<keyof T, string>>;
 
 type Rules = {
   required?: boolean | string; // true or custom message
+  pattern?: RegExp | { value: RegExp; message: string };
 };
 
 export function useForm<T extends Record<string, any>>(
@@ -53,6 +54,23 @@ export function useForm<T extends Record<string, any>>(
         (Array.isArray(value) && value.length === 0);
 
       if (empty) return msg;
+    }
+
+    if (rules.pattern) {
+      const value = nextValues[name];
+
+      // Only apply pattern validation to non-empty strings.
+      // If the field is empty, `required` should handle it.
+      if (typeof value === "string" && value.length > 0) {
+        const reg =
+          rules.pattern instanceof RegExp ? rules.pattern : rules.pattern.value;
+        const msg =
+          rules.pattern instanceof RegExp
+            ? "Invalid format"
+            : rules.pattern.message;
+
+        if (!reg.test(value)) return msg;
+      }
     }
 
     return undefined;
