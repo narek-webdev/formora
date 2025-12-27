@@ -1,5 +1,5 @@
 {
-  "name": "valido-react",
+  "name": "formora",
   "version": "0.1.0",
   "description": "Type-safe, headless form validation for React",
   "main": "dist/index.cjs",

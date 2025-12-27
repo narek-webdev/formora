@@ -2,10 +2,10 @@ import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useFormValidation } from "./useFormValidation";
+import { useForm } from "./useForm";
 
 function SubmitForm(props: { onValid: (v: any) => void }) {
-  const form = useFormValidation({
+  const form = useForm({
     initialValues: { email: "" },
     validateOn: "submit",
   });
@@ -24,7 +24,7 @@ function SubmitForm(props: { onValid: (v: any) => void }) {
   );
 }
 
-describe("useFormValidation - submit", () => {
+describe("useForm - submit", () => {
   //   it("shows required error on submit and calls onValid when fixed", async () => {
   //     const user = userEvent.setup();
   //     const onValid = vi.fn();
@@ -48,7 +48,7 @@ describe("useFormValidation - submit", () => {
     const user = userEvent.setup();
 
     function ValidForm() {
-      const form = useFormValidation({
+      const form = useForm({
         initialValues: { name: "" },
         validateOn: "change",
       });

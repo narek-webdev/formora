@@ -2,10 +2,10 @@ import * as React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useFormValidation } from "./useFormValidation";
+import { useForm } from "./useForm";
 
 function TestForm() {
-  const form = useFormValidation({
+  const form = useForm({
     initialValues: { name: "" },
     validateOn: "change",
   });
@@ -21,7 +21,7 @@ function TestForm() {
   );
 }
 
-describe("useFormValidation - required", () => {
+describe("useForm - required", () => {
   // it("sets error when value is empty and clears when non-empty", async () => {
   //   const user = userEvent.setup();
   //   render(<TestForm />);
@@ -43,7 +43,7 @@ describe("useFormValidation - required", () => {
   //   const user = userEvent.setup();
 
   //   function TestTouched() {
-  //     const form = useFormValidation({
+  //     const form = useForm({
   //       initialValues: { name: "" },
   //     });
 
@@ -69,7 +69,7 @@ describe("useFormValidation - required", () => {
     const user = userEvent.setup();
 
     function BlurForm() {
-      const form = useFormValidation({
+      const form = useForm({
         initialValues: { name: "" },
         validateOn: "blur",
       });

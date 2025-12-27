@@ -11,7 +11,7 @@ type Rules = {
   required?: boolean | string; // true or custom message
 };
 
-export function useFormValidation<T extends Record<string, any>>(
+export function useForm<T extends Record<string, any>>(
   options: UseFormOptions<T>
 ) {
   const validateOn = options.validateOn ?? "submit";

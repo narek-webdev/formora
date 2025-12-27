@@ -1,8 +1,8 @@
-# valido-react
+# formora
 
 A **headless form state and validation hook for React**.
 
-`valido-react` helps you manage form values, track user interaction, and validate inputs with a clean, type-safe API — without enforcing any UI structure.
+`formora` helps you manage form values, track user interaction, and validate inputs with a clean, type-safe API — without enforcing any UI structure.
 
 ---
 
@@ -21,13 +21,13 @@ A **headless form state and validation hook for React**.
 ## 📦 Installation
 
 ```bash
-npm install valido-react
+npm install formora
 ```
 
 or
 
 ```bash
-yarn add valido-react
+yarn add formora
 ```
 
 ---
@@ -35,10 +35,10 @@ yarn add valido-react
 ## 🚀 Basic Usage
 
 ```tsx
-import { useFormValidation } from "valido-react";
+import { useForm } from "formora";
 
 function LoginForm() {
-  const form = useFormValidation({
+  const form = useForm({
     initialValues: { email: "" },
     validateOn: "submit",
   });
@@ -62,10 +62,10 @@ function LoginForm() {
 
 ## 🧠 API Overview
 
-### `useFormValidation(options)`
+### `useForm(options)`
 
 ```ts
-useFormValidation<T>({
+useForm<T>({
   initialValues: T,
   validateOn: "change" | "blur" | "submit",
 });
@@ -109,7 +109,7 @@ useFormValidation<T>({
 
 ## 🧪 Testing
 
-`valido-react` is tested using **Vitest** and **Testing Library**, focusing on real user behavior.
+`formora` is tested using **Vitest** and **Testing Library**, focusing on real user behavior.
 
 ```bash
 npm run test
