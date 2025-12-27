@@ -10,6 +10,7 @@ type Errors<T> = Partial<Record<keyof T, string>>;
 type Rules = {
   required?: boolean | string; // true or custom message
   pattern?: RegExp | { value: RegExp; message: string };
+  minLength?: number | { value: number; message: string };
 };
 
 export function useForm<T extends Record<string, any>>(
@@ -70,6 +71,26 @@ export function useForm<T extends Record<string, any>>(
             : rules.pattern.message;
 
         if (!reg.test(value)) return msg;
+      }
+    }
+
+    if (rules.minLength !== undefined) {
+      const value = nextValues[name];
+
+      const min =
+        typeof rules.minLength === "number"
+          ? rules.minLength
+          : rules.minLength.value;
+
+      const msg =
+        typeof rules.minLength === "number"
+          ? `Must be at least ${min} characters`
+          : rules.minLength.message;
+
+      // Only apply minLength to non-empty strings.
+      // If empty should be invalid, `required` should handle it.
+      if (typeof value === "string" && value.length > 0 && value.length < min) {
+        return msg;
       }
     }
 
