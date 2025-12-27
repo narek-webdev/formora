@@ -158,15 +158,26 @@ npm run dev
 
 ---
 
+## 🎯 Design Principles
+
+Formora is built with a few clear principles in mind:
+
+- **Headless by design** — Formora manages state and validation only. UI, layout, and styling are always up to you.
+- **Predictable behavior** — Validation timing is explicit (`change`, `blur`, or `submit`). No hidden side effects.
+- **Async-first mindset** — Async validation is treated as a first-class feature and is race-condition safe by default.
+- **Type safety over magic** — Strong TypeScript typing with explicit field names and minimal runtime assumptions.
+- **Small, composable API** — Fewer concepts, fewer surprises. Features are added deliberately.
+
 ## 🗺 Roadmap
 
-Planned features:
+Planned and possible future improvements:
 
-- Advanced validation rules (custom validators, cross-field validation)
-- Async validation support
-- Schema resolvers (Zod, Valibot)
-- Nested fields and field arrays
-- Playground & Storybook examples
+- Async validation UX improvements (debouncing, submit behavior)
+- Form state helpers (`reset`, `setValue`, `setError`)
+- Cross-field validation helpers
+- Schema adapters (Zod, Valibot) — optional, not required
+- Nested fields and field arrays (longer-term)
+- Improved playground examples
 
 ---
 
