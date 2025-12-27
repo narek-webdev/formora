@@ -10,7 +10,7 @@ A **headless form state and validation hook for React**.
 
 - ✅ Form state management (values)
 - ✅ Validation on **change**, **blur**, or **submit**
-- ✅ Built-in validation rules (starting with `required`)
+- ✅ Built-in validation rules (`required`, `pattern`, `minLength`)
 - ✅ Tracks `errors`, `touched`, and `isValid`
 - ✅ Fully controlled inputs
 - ✅ TypeScript-first, strongly typed field names
@@ -93,6 +93,8 @@ useForm<T>({
 #### Supported rules (v0.1)
 
 - `required: boolean | string`
+- `pattern: RegExp | { value: RegExp; message: string }`
+- `minLength: number | { value: number; message: string }`
 
 ---
 
@@ -121,7 +123,7 @@ npm run test
 
 Planned features:
 
-- Pattern / length / number validation rules
+- Additional validation rules (maxLength, min, max)
 - Async validation support
 - Schema resolvers (Zod, Valibot)
 - Nested fields and field arrays

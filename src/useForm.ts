@@ -11,6 +11,9 @@ type Rules = {
   required?: boolean | string; // true or custom message
   pattern?: RegExp | { value: RegExp; message: string };
   minLength?: number | { value: number; message: string };
+  maxLength?: number | { value: number; message: string };
+  min?: number | { value: number; message: string };
+  max?: number | { value: number; message: string };
 };
 
 export function useForm<T extends Record<string, any>>(
@@ -92,6 +95,62 @@ export function useForm<T extends Record<string, any>>(
       if (typeof value === "string" && value.length > 0 && value.length < min) {
         return msg;
       }
+    }
+
+    if (rules.maxLength !== undefined) {
+      const value = nextValues[name];
+
+      const maxLen =
+        typeof rules.maxLength === "number"
+          ? rules.maxLength
+          : rules.maxLength.value;
+
+      const msg =
+        typeof rules.maxLength === "number"
+          ? `Must be at most ${maxLen} characters`
+          : rules.maxLength.message;
+
+      // Only apply maxLength to non-empty strings.
+      // If empty should be invalid, `required` should handle it.
+      if (
+        typeof value === "string" &&
+        value.length > 0 &&
+        value.length > maxLen
+      ) {
+        return msg;
+      }
+    }
+
+    // Numeric range checks: support both numbers and numeric strings (e.g. <input type="number" /> still provides strings).
+    const asNumber = (v: unknown): number | undefined => {
+      if (typeof v === "number" && Number.isFinite(v)) return v;
+      if (typeof v === "string") {
+        const t = v.trim();
+        if (t === "") return undefined;
+        const n = Number(t);
+        if (Number.isFinite(n)) return n;
+      }
+      return undefined;
+    };
+
+    const num = asNumber(nextValues[name]);
+
+    if (rules.min !== undefined && num !== undefined) {
+      const min = typeof rules.min === "number" ? rules.min : rules.min.value;
+      const msg =
+        typeof rules.min === "number"
+          ? `Must be at least ${min}`
+          : rules.min.message;
+      if (num < min) return msg;
+    }
+
+    if (rules.max !== undefined && num !== undefined) {
+      const max = typeof rules.max === "number" ? rules.max : rules.max.value;
+      const msg =
+        typeof rules.max === "number"
+          ? `Must be at most ${max}`
+          : rules.max.message;
+      if (num > max) return msg;
     }
 
     return undefined;
