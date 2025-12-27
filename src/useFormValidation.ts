@@ -61,6 +61,43 @@ export function useFormValidation<T extends Record<string, any>>(
     return true;
   }
 
+  function validateAll(nextValues: T) {
+    let ok = true;
+
+    for (const name of rulesRef.current.keys()) {
+      const valid = validateField(name, nextValues);
+      if (!valid) ok = false;
+    }
+
+    return ok;
+  }
+
+  function touchAllRegisteredFields() {
+    setTouched((prev) => {
+      const next: any = { ...prev };
+      for (const key of rulesRef.current.keys()) next[key] = true;
+      return next;
+    });
+  }
+
+  function handleSubmit(
+    onValid: (vals: T) => void,
+    onInvalid?: (errs: Errors<T>) => void
+  ) {
+    return (e?: any) => {
+      e?.preventDefault?.();
+
+      touchAllRegisteredFields();
+
+      const ok = validateAll(values);
+      if (ok) {
+        onValid(values);
+      } else {
+        onInvalid?.(errors);
+      }
+    };
+  }
+
   function register<K extends keyof T>(name: K, rules?: Rules) {
     if (rules) rulesRef.current.set(name, rules);
 
@@ -90,11 +127,15 @@ export function useFormValidation<T extends Record<string, any>>(
     };
   }
 
+  const isValid = Object.keys(errors).length === 0;
+
   return {
     values,
     errors,
     touched,
+    isValid,
     register,
     validateField,
+    handleSubmit,
   };
 }
