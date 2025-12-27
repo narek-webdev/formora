@@ -14,6 +14,11 @@ type Rules = {
   maxLength?: number | { value: number; message: string };
   min?: number | { value: number; message: string };
   max?: number | { value: number; message: string };
+  /**
+   * Custom synchronous validator.
+   * Return a string to indicate an error message, or undefined for valid.
+   */
+  validate?: (value: unknown, values: any) => string | undefined;
 };
 
 export function useForm<T extends Record<string, any>>(
@@ -151,6 +156,11 @@ export function useForm<T extends Record<string, any>>(
           ? `Must be at most ${max}`
           : rules.max.message;
       if (num > max) return msg;
+    }
+
+    if (typeof rules.validate === "function") {
+      const msg = rules.validate(nextValues[name], nextValues);
+      if (typeof msg === "string") return msg;
     }
 
     return undefined;

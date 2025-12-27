@@ -98,6 +98,7 @@ useForm<T>({
 - `maxLength: number | { value: number; message: string }`
 - `min: number | { value: number; message: string }` (numbers / numeric strings)
 - `max: number | { value: number; message: string }` (numbers / numeric strings)
+- `validate: (value, values) => string | undefined`
 
 ---
 
