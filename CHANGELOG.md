@@ -8,11 +8,18 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Added
 
-- (none)
+- Extended DX helpers for imperative form control:
+  - `setValue(name, value, options)`
+  - `setValues(partial, options)`
+  - `reset()`
+  - `resetField(name)`
+  - Error helpers: `setError`, `clearError`, `clearErrors`
+  - Touched helpers: `setTouched`, `touchAll`
 
 ### Changed
 
-- (none)
+- Form state can now be safely manipulated programmatically without relying on DOM events or `register` handlers.
+- Multiple fields can be updated, validated, and touched in a single operation.
 
 ### Fixed
 
