@@ -18,6 +18,7 @@ A **headless form state and validation hook for React**.
 - ✅ Async validation (race-condition safe)
 - ✅ Debounced async validation (v0.2)
 - ✅ Field-level `validating` state
+- ✅ DX helpers: `setValue`, `setValues`, `reset`, `resetField`, error & touched helpers (v0.3)
 - ✅ Tracks `errors`, `touched`, and `isValid`
 - ✅ Fully controlled inputs
 - ✅ TypeScript-first, strongly typed field names
@@ -82,18 +83,27 @@ useForm<T>({
 
 ### Returned values
 
-| Property       | Description                        |
-| -------------- | ---------------------------------- |
-| `values`       | Current form values                |
-| `errors`       | Validation errors per field        |
-| `touched`      | Tracks whether a field was blurred |
-| `isValid`      | `true` if there are no errors      |
-| `register`     | Connects an input to the form      |
-| `handleSubmit` | Handles submit + validation        |
-| `validating`   | Field-level async validation state |
-| `isValidating` | `true` if any field is validating  |
-| `submitCount`  | Number of submit attempts          |
-| `hasSubmitted` | `true` after first submit attempt  |
+| Property       | Description                                |
+| -------------- | ------------------------------------------ |
+| `values`       | Current form values                        |
+| `errors`       | Validation errors per field                |
+| `touched`      | Tracks whether a field was blurred         |
+| `isValid`      | `true` if there are no errors              |
+| `register`     | Connects an input to the form              |
+| `handleSubmit` | Handles submit + validation                |
+| `validating`   | Field-level async validation state         |
+| `isValidating` | `true` if any field is validating          |
+| `submitCount`  | Number of submit attempts                  |
+| `hasSubmitted` | `true` after first submit attempt          |
+| `setValue`     | Programmatically set a field value         |
+| `reset`        | Reset the entire form to initial values    |
+| `resetField`   | Reset a single field to its initial value  |
+| `setValues`    | Programmatically set multiple field values |
+| `setError`     | Manually set a field error                 |
+| `clearError`   | Clear a specific field error               |
+| `clearErrors`  | Clear all field errors                     |
+| `setTouched`   | Manually set a field's touched state       |
+| `touchAll`     | Mark all registered fields as touched      |
 
 ---
 
@@ -159,6 +169,107 @@ register("email", {
 - `validating[field]` becomes `true` as soon as async validation is scheduled
 
 ---
+
+## 🧰 DX Helpers (v0.3)
+
+Formora provides a small set of **developer experience helpers** for common imperative form actions.
+
+### `setValue(name, value, options?)`
+
+```ts
+form.setValue("email", "test@example.com", {
+  shouldTouch: true,
+  shouldValidate: true,
+});
+```
+
+Options:
+
+- `shouldTouch` — marks the field as touched
+- `shouldValidate` — runs sync + async validation immediately
+
+This does **not** depend on `validateOn` and is fully explicit.
+
+---
+
+### `reset()`
+
+Resets the entire form to its initial state:
+
+```ts
+form.reset();
+```
+
+This will:
+
+- restore `initialValues`
+- clear `errors`, `touched`, and `validating`
+- cancel any pending async validation
+
+---
+
+### `resetField(name)`
+
+Resets a single field:
+
+```ts
+form.resetField("email");
+```
+
+This will:
+
+- restore the field’s initial value
+- clear its error, touched, and validating state
+- cancel pending async validation for that field
+
+---
+
+### `setValues(partial, options?)`
+
+Set multiple field values at once:
+
+```ts
+form.setValues(
+  { email: "user@example.com", age: 25 },
+  {
+    shouldTouch: true,
+    shouldValidate: true,
+  }
+);
+```
+
+Options:
+
+- `shouldTouch` — marks all provided fields as touched
+- `shouldValidate` — validates only the provided fields
+- `bypassDebounce` — if `true`, async validation runs immediately
+
+---
+
+### Error helpers
+
+```ts
+form.setError("email", "Email already exists");
+form.clearError("email");
+form.clearErrors();
+```
+
+These helpers are useful for:
+
+- server-side validation errors
+- manual error control
+
+---
+
+### Touched helpers
+
+```ts
+form.setTouched("email", true);
+form.touchAll();
+```
+
+- `setTouched(name, boolean)` manually toggles touched state
+- `touchAll()` marks all registered fields as touched
 
 ### `handleSubmit(onValid, onInvalid?)`
 
@@ -227,7 +338,7 @@ Formora is built with a few clear principles in mind:
 Planned and possible future improvements:
 
 - ✅ Async validation UX improvements (debouncing, submit behavior)
-- Form state helpers (`reset`, `setValue`, `setError`)
+- ✅ Form state helpers (`setValue`, `setValues`, `reset`, `resetField`, error & touched helpers)
 - Cross-field validation helpers
 - Schema adapters (Zod, Valibot) — optional, not required
 - Nested fields and field arrays (longer-term)
