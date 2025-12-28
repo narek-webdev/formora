@@ -27,6 +27,12 @@ export function useForm<T extends Record<string, any>>(
   );
   const isMountedRef = React.useRef(true);
 
+  const initialValuesRef = React.useRef(options.initialValues);
+
+  React.useEffect(() => {
+    initialValuesRef.current = options.initialValues;
+  }, [options.initialValues]);
+
   React.useEffect(() => {
     return () => {
       isMountedRef.current = false;
@@ -42,6 +48,11 @@ export function useForm<T extends Record<string, any>>(
       clearTimeout(t);
       debounceTimersRef.current.delete(name);
     }
+  }
+
+  function clearAllDebounceTimers() {
+    for (const t of debounceTimersRef.current.values()) clearTimeout(t);
+    debounceTimersRef.current.clear();
   }
 
   function setFieldValidating(name: keyof T, isValidating: boolean) {
@@ -197,6 +208,136 @@ export function useForm<T extends Record<string, any>>(
     });
   }
 
+  type SetValueOptions = {
+    shouldValidate?: boolean;
+    shouldTouch?: boolean;
+  };
+
+  function setValue<K extends keyof T>(
+    name: K,
+    value: T[K],
+    opts: SetValueOptions = {}
+  ) {
+    const { shouldValidate, shouldTouch } = opts;
+
+    if (shouldTouch) {
+      setTouched((prev) => ({ ...prev, [name]: true }));
+    }
+
+    setValues((prev) => {
+      const next = { ...prev, [name]: value };
+
+      if (shouldValidate) {
+        validateFieldSync(name, next);
+        void validateFieldAsync(name, next);
+      }
+
+      return next;
+    });
+  }
+
+  type SetValuesOptions = {
+    shouldValidate?: boolean;
+    shouldTouch?: boolean;
+    bypassDebounce?: boolean;
+  };
+
+  function setValuesPartial(partial: Partial<T>, opts: SetValuesOptions = {}) {
+    const { shouldValidate, shouldTouch, bypassDebounce = true } = opts;
+
+    if (shouldTouch) {
+      setTouched((prev) => {
+        const next: any = { ...prev };
+        for (const k of Object.keys(partial) as Array<keyof T>) {
+          next[k] = true;
+        }
+        return next;
+      });
+    }
+
+    setValues((prev) => {
+      const next = { ...prev, ...partial };
+
+      if (shouldValidate) {
+        // Validate only the keys being set (keeps it fast and predictable)
+        for (const k of Object.keys(partial) as Array<keyof T>) {
+          validateFieldSync(k, next);
+          void validateFieldAsync(k, next, { bypassDebounce });
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function setError<K extends keyof T>(name: K, message: string) {
+    setFieldError(name, message);
+  }
+
+  function clearError<K extends keyof T>(name: K) {
+    setFieldError(name, undefined);
+  }
+
+  function clearErrors() {
+    setErrors({});
+  }
+
+  function setTouchedField<K extends keyof T>(name: K, isTouched: boolean) {
+    setTouched((prev) => {
+      const next: any = { ...prev };
+      if (isTouched) next[name] = true;
+      else delete next[name];
+      return next;
+    });
+  }
+
+  function touchAll() {
+    touchAllRegisteredFields();
+  }
+
+  function reset() {
+    // cancel any pending debounced async validations
+    clearAllDebounceTimers();
+
+    // reset state
+    setValues(initialValuesRef.current);
+    setErrors({});
+    setTouched({});
+    setValidating({});
+    setSubmitCount(0);
+
+    // reset async sequence tracking (optional but keeps state tidy)
+    asyncSeqRef.current.clear();
+  }
+
+  function resetField<K extends keyof T>(name: K) {
+    // cancel any pending debounced async validation for this field
+    clearDebounceTimer(name);
+
+    // reset field value
+    setValues((prev) => ({ ...prev, [name]: initialValuesRef.current[name] }));
+
+    // clear field error/touched/validating
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete (next as any)[name];
+      return next;
+    });
+    setTouched((prev) => {
+      const next = { ...prev };
+      delete (next as any)[name];
+      return next;
+    });
+    setValidating((prev) => {
+      const next = { ...prev };
+      delete (next as any)[name];
+      return next;
+    });
+
+    // reset async seq for the field (optional)
+    asyncSeqRef.current.delete(name);
+  }
+
   function handleSubmit(
     onValid: (vals: T) => void,
     onInvalid?: (errs: Errors<T>) => void
@@ -282,6 +423,15 @@ export function useForm<T extends Record<string, any>>(
     isValid,
     isValidating,
     register,
+    setValue,
+    setValues: setValuesPartial,
+    setError,
+    clearError,
+    clearErrors,
+    setTouched: setTouchedField,
+    touchAll,
+    reset,
+    resetField,
     validateField: validateFieldSync,
     handleSubmit,
     submitCount,
