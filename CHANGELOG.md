@@ -8,6 +8,22 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Added
 
+- (none)
+
+### Changed
+
+- (none)
+
+### Fixed
+
+- (none)
+
+---
+
+## [0.3.0] - 2025-12-28
+
+### Added
+
 - Extended DX helpers for imperative form control:
   - `setValue(name, value, options)`
   - `setValues(partial, options)`
@@ -71,6 +87,7 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/narek-webdev/formora/releases/tag/v0.3.0
 [0.2.0]: https://github.com/narek-webdev/formora/releases/tag/v0.2.0
 [0.1.0]: https://github.com/narek-webdev/formora/releases/tag/v0.1.0
