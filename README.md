@@ -15,6 +15,9 @@ A **headless form state and validation hook for React**.
 - ✅ Form state management (values)
 - ✅ Validation on **change**, **blur**, or **submit**
 - ✅ Built-in validation rules (`required`, `pattern`, `minLength`, `maxLength`, `min`, `max`)
+- ✅ Async validation (race-condition safe)
+- ✅ Debounced async validation (v0.2)
+- ✅ Field-level `validating` state
 - ✅ Tracks `errors`, `touched`, and `isValid`
 - ✅ Fully controlled inputs
 - ✅ TypeScript-first, strongly typed field names
@@ -72,6 +75,8 @@ function LoginForm() {
 useForm<T>({
   initialValues: T,
   validateOn: "change" | "blur" | "submit",
+  asyncDebounceMs: number,
+  blockSubmitWhileValidating: boolean,
 });
 ```
 
@@ -85,6 +90,10 @@ useForm<T>({
 | `isValid`      | `true` if there are no errors      |
 | `register`     | Connects an input to the form      |
 | `handleSubmit` | Handles submit + validation        |
+| `validating`   | Field-level async validation state |
+| `isValidating` | `true` if any field is validating  |
+| `submitCount`  | Number of submit attempts          |
+| `hasSubmitted` | `true` after first submit attempt  |
 
 ---
 
@@ -103,6 +112,51 @@ useForm<T>({
 - `min: number | { value: number; message: string }` (numbers / numeric strings)
 - `max: number | { value: number; message: string }` (numbers / numeric strings)
 - `validate: (value, values) => string | undefined`
+
+---
+
+## ⏳ Async Validation (v0.2)
+
+Formora treats async validation as a first-class feature.
+
+### `validateAsync`
+
+```ts
+register("email", {
+  validateAsync: async (value) => {
+    await new Promise((r) => setTimeout(r, 300));
+    return value.includes("@") ? undefined : "Invalid email";
+  },
+});
+```
+
+### Debounced async validation
+
+You can debounce async validators globally:
+
+```ts
+useForm({
+  initialValues: { email: "" },
+  validateOn: "change",
+  asyncDebounceMs: 300,
+});
+```
+
+Or per field:
+
+```ts
+register("email", {
+  validateAsync,
+  asyncDebounceMs: 500,
+});
+```
+
+### UX rules
+
+- Async validation is **race-condition safe** (latest result always wins)
+- Debounce applies on `change`
+- `blur` and `submit` **bypass debounce** and run async validation immediately
+- `validating[field]` becomes `true` as soon as async validation is scheduled
 
 ---
 
@@ -172,7 +226,7 @@ Formora is built with a few clear principles in mind:
 
 Planned and possible future improvements:
 
-- Async validation UX improvements (debouncing, submit behavior)
+- ✅ Async validation UX improvements (debouncing, submit behavior)
 - Form state helpers (`reset`, `setValue`, `setError`)
 - Cross-field validation helpers
 - Schema adapters (Zod, Valibot) — optional, not required

@@ -1,6 +1,8 @@
 export type UseFormOptions<T> = {
   initialValues: T;
   validateOn?: "change" | "blur" | "submit";
+  asyncDebounceMs?: number;
+  blockSubmitWhileValidating?: boolean;
 };
 
 export type Errors<T> = Partial<Record<keyof T, string>>;
@@ -12,7 +14,7 @@ export type Rules<T> = {
   maxLength?: number | { value: number; message: string };
   min?: number | { value: number; message: string };
   max?: number | { value: number; message: string };
-
+  asyncDebounceMs?: number; // overrides global debounce for this field
   /** Return a string for error message, or undefined for valid. */
   validate?: (value: unknown, values: T) => string | undefined;
 
