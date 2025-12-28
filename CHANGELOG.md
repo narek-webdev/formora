@@ -8,16 +8,38 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Added
 
-- Design principles section added to README to clarify Formora’s philosophy and scope.
-- Playground documentation explaining local development and usage.
+- (none)
 
 ### Changed
 
-- Updated roadmap to reflect current features and realistic future plans.
+- (none)
 
 ### Fixed
 
 - (none)
+
+---
+
+## [0.2.0] - 2025-12-28
+
+### Added
+
+- **Debounced async validation** via `asyncDebounceMs` (global and per-field).
+- Blur and submit **bypass debounce** for immediate async validation.
+- Field-level async scheduling state (`validating`).
+- Submission lifecycle state:
+  - `submitCount`
+  - `hasSubmitted`
+- New test suite covering async debounce, race safety, and submit behavior.
+
+### Changed
+
+- Async validation UX is now explicit, predictable, and calmer under rapid input.
+- Submit behavior now waits for async validation when configured.
+
+### Fixed
+
+- Prevented stale async validation results from overriding newer input during debounce.
 
 ---
 
@@ -42,5 +64,6 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/narek-webdev/formora/releases/tag/v0.2.0
 [0.1.0]: https://github.com/narek-webdev/formora/releases/tag/v0.1.0
