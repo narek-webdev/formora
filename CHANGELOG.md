@@ -20,6 +20,29 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ---
 
+## [0.4.0-beta.1] - 2025-12-29
+
+### Added
+
+- Nested field paths (dot-notation):
+  - `user.email`
+  - `profile.address.street`
+  - `items.0.name`
+- Nested validation for all built-in rules (`required`, `pattern`, `minLength`, `maxLength`, `min`, `max`).
+- Deterministic submit validation (sync + async collected at submit time).
+- Typed field paths for improved TypeScript DX (autocomplete and value inference).
+- Extended nested playground examples for developer testing.
+
+### Changed
+
+- `errors` are now stored as **nested objects** instead of flat key-value maps.
+- Submit behavior now bypasses async debounce and validates immediately.
+- Internal validation flow simplified and stabilized for nested paths.
+
+### Notes
+
+- ⚠️ This is a **beta release**. APIs may change before `1.0.0`.
+
 ## [0.3.0] - 2025-12-28
 
 ### Added
@@ -87,7 +110,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.4.0-beta.1...HEAD
+[0.4.0-beta.1]: https://github.com/narek-webdev/formora/releases/tag/v0.4.0-beta.1
 [0.3.0]: https://github.com/narek-webdev/formora/releases/tag/v0.3.0
 [0.2.0]: https://github.com/narek-webdev/formora/releases/tag/v0.2.0
 [0.1.0]: https://github.com/narek-webdev/formora/releases/tag/v0.1.0

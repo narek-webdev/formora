@@ -10,9 +10,41 @@ A **headless form state and validation hook for React**.
 
 ---
 
+## 🚧 v0.4 (Beta)
+
+> ⚠️ This version is a **beta release**. APIs may still evolve before `1.0.0`.
+
+### Nested fields
+
+Formora now supports **nested field paths** out of the box:
+
+```ts
+register("user.email");
+register("profile.address.street");
+register("items.0.name");
+```
+
+Validation errors are nested accordingly:
+
+```ts
+errors.user.email;
+errors.profile.address.street;
+errors.items?.[0]?.name;
+```
+
+### TypeScript DX (beta)
+
+When using TypeScript, Formora infers valid nested paths from `initialValues` and provides autocomplete:
+
+```ts
+register("user."); // autocomplete: email | username | age | ...
+setValue("user.age", 25); // fully typed
+```
+
 ## ✨ Features
 
 - ✅ Form state management (values)
+- ✅ Nested fields & arrays (v0.4 beta)
 - ✅ Validation on **change**, **blur**, or **submit**
 - ✅ Built-in validation rules (`required`, `pattern`, `minLength`, `maxLength`, `min`, `max`)
 - ✅ Async validation (race-condition safe)
@@ -341,7 +373,7 @@ Planned and possible future improvements:
 - ✅ Form state helpers (`setValue`, `setValues`, `reset`, `resetField`, error & touched helpers)
 - Cross-field validation helpers
 - Schema adapters (Zod, Valibot) — optional, not required
-- Nested fields and field arrays (longer-term)
+- ✅ Nested fields (v0.4 beta)
 - Improved playground examples
 
 ---
