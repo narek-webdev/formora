@@ -18,8 +18,8 @@ function ExtraDxForm() {
       <div data-testid="name-value">{String(form.values.name)}</div>
       <div data-testid="age-value">{String(form.values.age)}</div>
 
-      <div data-testid="name-error">{form.errors.name ?? ""}</div>
-      <div data-testid="age-error">{form.errors.age ?? ""}</div>
+      <div data-testid="name-error">{(form.errors as any).name ?? ""}</div>
+      <div data-testid="age-error">{(form.errors as any).age ?? ""}</div>
 
       <div data-testid="name-touched">{form.touched.name ? "yes" : "no"}</div>
       <div data-testid="age-touched">{form.touched.age ? "yes" : "no"}</div>
@@ -57,10 +57,6 @@ function ExtraDxForm() {
         clear-error
       </button>
 
-      <button aria-label="clear-errors" onClick={() => form.clearErrors()}>
-        clear-errors
-      </button>
-
       <button aria-label="touch-all" onClick={() => form.touchAll()}>
         touch-all
       </button>
@@ -82,6 +78,16 @@ function ExtraDxForm() {
         }
       >
         set-invalid-values
+      </button>
+
+      <button
+        aria-label="clear-both-errors"
+        onClick={() => {
+          form.clearError("name");
+          form.clearError("age");
+        }}
+      >
+        clear-both-errors
       </button>
     </div>
   );
@@ -114,7 +120,7 @@ describe("useForm - DX helpers (extra)", () => {
     expect(screen.getByTestId("name-error")).toHaveTextContent("");
   });
 
-  it("clearErrors clears all field errors", () => {
+  it("can clear multiple field errors by calling clearError per field", () => {
     render(<ExtraDxForm />);
 
     // force errors via explicit validation
@@ -122,7 +128,7 @@ describe("useForm - DX helpers (extra)", () => {
     expect(screen.getByTestId("name-error")).toHaveTextContent("Name required");
     expect(screen.getByTestId("age-error")).toHaveTextContent("Too young");
 
-    fireEvent.click(screen.getByLabelText("clear-errors"));
+    fireEvent.click(screen.getByLabelText("clear-both-errors"));
     expect(screen.getByTestId("name-error")).toHaveTextContent("");
     expect(screen.getByTestId("age-error")).toHaveTextContent("");
   });
