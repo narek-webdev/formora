@@ -3,6 +3,139 @@ import type { Errors, Rules, UseFormOptions } from "./types";
 import { getFieldError } from "./validation";
 import { isLatestAsyncSeq, nextAsyncSeq } from "./async";
 
+// ---------------------------------------------
+// Nested field (path) helpers
+// Supports: "a.b.c", "a[0].b", "a.0.b", "a['x']", "a[\"x\"]"
+// ---------------------------------------------
+
+type PathKey = string | number;
+
+function toPath(path: string): PathKey[] {
+  const normalized = String(path)
+    .replace(/\[(\d+)\]/g, ".$1")
+    .replace(/\[["']([^"']+)["']\]/g, ".$1")
+    .replace(/^\./, "");
+
+  return normalized
+    .split(".")
+    .filter(Boolean)
+    .map((k) => {
+      const n = Number(k);
+      return Number.isFinite(n) && String(n) === k ? n : k;
+    });
+}
+
+function getByPath<TVal = any>(obj: any, path: string, fallback?: TVal): TVal {
+  const keys = toPath(path);
+  let cur = obj;
+  for (const key of keys) {
+    if (cur == null) return fallback as TVal;
+    cur = cur[key as any];
+  }
+  return (cur === undefined ? (fallback as TVal) : cur) as TVal;
+}
+
+function isPlainObject(v: any) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function setByPath(obj: any, path: string, value: any): any {
+  const keys = toPath(path);
+  if (keys.length === 0) return obj;
+
+  const root = Array.isArray(obj)
+    ? obj.slice()
+    : isPlainObject(obj)
+    ? { ...obj }
+    : {};
+
+  let cur: any = root;
+
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const isLast = i === keys.length - 1;
+
+    if (isLast) {
+      cur[key as any] = value;
+      break;
+    }
+
+    const nextKey = keys[i + 1];
+    const existing = cur[key as any];
+    const shouldBeArray = typeof nextKey === "number";
+
+    let nextContainer: any;
+    if (existing == null) {
+      nextContainer = shouldBeArray ? [] : {};
+    } else {
+      nextContainer = Array.isArray(existing)
+        ? existing.slice()
+        : isPlainObject(existing)
+        ? { ...existing }
+        : shouldBeArray
+        ? []
+        : {};
+    }
+
+    cur[key as any] = nextContainer;
+    cur = nextContainer;
+  }
+
+  return root;
+}
+
+function unsetByPath(obj: any, path: string): any {
+  const keys = toPath(path);
+  if (keys.length === 0) return obj;
+
+  const root = Array.isArray(obj)
+    ? obj.slice()
+    : isPlainObject(obj)
+    ? { ...obj }
+    : {};
+
+  let cur: any = root;
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    const existing = cur[key as any];
+    if (existing == null) return root;
+
+    const cloned = Array.isArray(existing)
+      ? existing.slice()
+      : isPlainObject(existing)
+      ? { ...existing }
+      : existing;
+
+    cur[key as any] = cloned;
+    cur = cloned;
+  }
+
+  const lastKey = keys[keys.length - 1];
+
+  if (Array.isArray(cur) && typeof lastKey === "number") {
+    cur[lastKey] = undefined; // keep indices stable
+  } else if (isPlainObject(cur)) {
+    delete cur[lastKey as any];
+  } else {
+    cur[lastKey as any] = undefined;
+  }
+
+  return root;
+}
+
+// Proxy object so legacy validators that do `values[name]` still work when `name` is a path.
+function asPathReadableObject<TObj extends Record<string, any>>(
+  values: TObj
+): TObj {
+  return new Proxy(values as any, {
+    get(target, prop) {
+      if (typeof prop === "string") return getByPath(target, prop);
+      return (target as any)[prop as any];
+    },
+  });
+}
+
 export function useForm<T extends Record<string, any>>(
   options: UseFormOptions<T>
 ) {
@@ -11,19 +144,17 @@ export function useForm<T extends Record<string, any>>(
   const blockSubmitWhileValidating = options.blockSubmitWhileValidating ?? true;
 
   const [values, setValues] = React.useState<T>(options.initialValues);
-  const [errors, setErrors] = React.useState<Errors<T>>({});
-  const [touched, setTouched] = React.useState<
-    Partial<Record<keyof T, boolean>>
-  >({});
-  const [validating, setValidating] = React.useState<
-    Partial<Record<keyof T, boolean>>
-  >({});
+  const [errors, setErrors] = React.useState<any>({});
+  const [touched, setTouched] = React.useState<Record<string, boolean>>({});
+  const [validating, setValidating] = React.useState<Record<string, boolean>>(
+    {}
+  );
   const [submitCount, setSubmitCount] = React.useState(0);
 
-  const rulesRef = React.useRef(new Map<keyof T, Rules<T>>());
-  const asyncSeqRef = React.useRef(new Map<keyof T, number>());
+  const rulesRef = React.useRef(new Map<string, Rules<any>>());
+  const asyncSeqRef = React.useRef(new Map<string, number>());
   const debounceTimersRef = React.useRef(
-    new Map<keyof T, ReturnType<typeof setTimeout>>()
+    new Map<string, ReturnType<typeof setTimeout>>()
   );
   const isMountedRef = React.useRef(true);
 
@@ -42,7 +173,7 @@ export function useForm<T extends Record<string, any>>(
     };
   }, []);
 
-  function clearDebounceTimer(name: keyof T) {
+  function clearDebounceTimer(name: string) {
     const t = debounceTimersRef.current.get(name);
     if (t) {
       clearTimeout(t);
@@ -55,44 +186,44 @@ export function useForm<T extends Record<string, any>>(
     debounceTimersRef.current.clear();
   }
 
-  function setFieldValidating(name: keyof T, isValidating: boolean) {
+  function setFieldValidating(name: string, isValidating: boolean) {
     if (!isMountedRef.current) return;
     setValidating((prev) => {
-      const next: Partial<Record<keyof T, boolean>> = { ...prev };
+      const next: Record<string, boolean> = { ...prev };
       if (isValidating) next[name] = true;
-      else delete (next as any)[name];
+      else delete next[name];
       return next;
     });
   }
 
-  function setFieldError(name: keyof T, message?: string) {
+  function setFieldError(name: string, message?: string) {
     if (!isMountedRef.current) return;
-    setErrors((prev) => {
-      const next = { ...prev };
-      if (!message) delete (next as any)[name];
-      else next[name] = message;
+    setErrors((prev: any) => {
+      const next = message
+        ? setByPath(prev, name, message)
+        : unsetByPath(prev, name);
       return next;
     });
   }
 
-  function validateFieldSync(name: keyof T, nextValues: T) {
+  function validateFieldSync(name: string, nextValues: T) {
     const msg = getFieldError(name, nextValues, rulesRef.current);
     setFieldError(name, msg);
     return !msg;
   }
 
   function validateAllSync(nextValues: T) {
-    const nextErrors: Errors<T> = {};
+    const nextErrors: any = {};
     for (const name of rulesRef.current.keys()) {
       const msg = getFieldError(name, nextValues, rulesRef.current);
-      if (msg) nextErrors[name] = msg;
+      if (msg) Object.assign(nextErrors, setByPath(nextErrors, name, msg));
     }
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
 
   async function validateFieldAsync(
-    name: keyof T,
+    name: string,
     nextValues: T,
     opts?: { bypassDebounce?: boolean }
   ) {
@@ -143,7 +274,10 @@ export function useForm<T extends Record<string, any>>(
         }
 
         const runSeq = nextAsyncSeq(asyncSeqRef.current, name);
-        const msg = await validateAsync(nextValues[name], nextValues);
+        const msg = await validateAsync(
+          getByPath(nextValues, name),
+          nextValues
+        );
 
         if (!isMountedRef.current) return;
         if (!isLatestAsyncSeq(asyncSeqRef.current, name, runSeq)) return; // stale
@@ -160,7 +294,7 @@ export function useForm<T extends Record<string, any>>(
     const seq = nextAsyncSeq(asyncSeqRef.current, name);
     setFieldValidating(name, true);
 
-    const msg = await validateAsync(nextValues[name], nextValues);
+    const msg = await validateAsync(getByPath(nextValues, name), nextValues);
 
     if (!isMountedRef.current) return true;
     if (!isLatestAsyncSeq(asyncSeqRef.current, name, seq)) return true; // stale
@@ -175,7 +309,7 @@ export function useForm<T extends Record<string, any>>(
     opts?: { bypassDebounce?: boolean }
   ) {
     const names = Array.from(rulesRef.current.keys());
-    const asyncErrors: Errors<T> = {};
+    const asyncErrors: any = {};
 
     // Run sequentially to respect per-field state updates cleanly (still fast for typical forms).
     for (const name of names) {
@@ -186,23 +320,62 @@ export function useForm<T extends Record<string, any>>(
       if (!ok) {
         const msg =
           getFieldError(name, nextValues, rulesRef.current) ??
-          (errors as any)[name];
-        if (msg) asyncErrors[name] = msg as any;
+          getByPath(errors, name);
+        if (msg) Object.assign(asyncErrors, setByPath(asyncErrors, name, msg));
       } else {
         // if validateFieldAsync scheduled (debounced) it might not have produced an error yet
         // We only collect errors that are already known here.
         const current = getFieldError(name, nextValues, rulesRef.current);
-        if (current) asyncErrors[name] = current as any;
+        if (current)
+          Object.assign(asyncErrors, setByPath(asyncErrors, name, current));
       }
     }
 
     // Collect current errors snapshot
     return asyncErrors;
   }
+  // Deterministically collect submit-time errors (sync + async) for all registered fields
+  async function collectSubmitErrors(nextValues: T) {
+    const nextErrors: any = {};
+
+    // 1) Sync rules for all registered fields
+    for (const name of rulesRef.current.keys()) {
+      const msg = getFieldError(name, nextValues, rulesRef.current);
+      if (msg) Object.assign(nextErrors, setByPath(nextErrors, name, msg));
+    }
+
+    // 2) Async rules (submit bypasses debounce and runs immediately)
+    for (const name of rulesRef.current.keys()) {
+      const rules = rulesRef.current.get(name);
+      if (!rules?.validateAsync) continue;
+
+      // If sync already failed for this field, skip async
+      if (getByPath(nextErrors, name)) continue;
+
+      const seq = nextAsyncSeq(asyncSeqRef.current, name);
+      setFieldValidating(name, true);
+
+      const msg = await rules.validateAsync(
+        getByPath(nextValues, name),
+        nextValues
+      );
+
+      if (!isMountedRef.current) continue;
+      if (!isLatestAsyncSeq(asyncSeqRef.current, name, seq)) {
+        // stale result
+        continue;
+      }
+
+      if (msg) Object.assign(nextErrors, setByPath(nextErrors, name, msg));
+      setFieldValidating(name, false);
+    }
+
+    return nextErrors;
+  }
 
   function touchAllRegisteredFields() {
     setTouched((prev) => {
-      const next: any = { ...prev };
+      const next: Record<string, boolean> = { ...prev };
       for (const key of rulesRef.current.keys()) next[key] = true;
       return next;
     });
@@ -213,11 +386,7 @@ export function useForm<T extends Record<string, any>>(
     shouldTouch?: boolean;
   };
 
-  function setValue<K extends keyof T>(
-    name: K,
-    value: T[K],
-    opts: SetValueOptions = {}
-  ) {
+  function setValue(name: string, value: any, opts: SetValueOptions = {}) {
     const { shouldValidate, shouldTouch } = opts;
 
     if (shouldTouch) {
@@ -225,7 +394,7 @@ export function useForm<T extends Record<string, any>>(
     }
 
     setValues((prev) => {
-      const next = { ...prev, [name]: value };
+      const next: any = setByPath(prev, name, value);
 
       if (shouldValidate) {
         validateFieldSync(name, next);
@@ -261,8 +430,8 @@ export function useForm<T extends Record<string, any>>(
       if (shouldValidate) {
         // Validate only the keys being set (keeps it fast and predictable)
         for (const k of Object.keys(partial) as Array<keyof T>) {
-          validateFieldSync(k, next);
-          void validateFieldAsync(k, next, { bypassDebounce });
+          validateFieldSync(String(k), next);
+          void validateFieldAsync(String(k), next, { bypassDebounce });
         }
       }
 
@@ -270,21 +439,22 @@ export function useForm<T extends Record<string, any>>(
     });
   }
 
-  function setError<K extends keyof T>(name: K, message: string) {
+  function setError(name: string, message: string) {
     setFieldError(name, message);
   }
 
-  function clearError<K extends keyof T>(name: K) {
+  function clearError(name: string) {
     setFieldError(name, undefined);
   }
 
   function clearErrors() {
+    // Clear all errors (nested or flat)
     setErrors({});
   }
 
-  function setTouchedField<K extends keyof T>(name: K, isTouched: boolean) {
+  function setTouchedField(name: string, isTouched: boolean) {
     setTouched((prev) => {
-      const next: any = { ...prev };
+      const next: Record<string, boolean> = { ...prev };
       if (isTouched) next[name] = true;
       else delete next[name];
       return next;
@@ -310,19 +480,17 @@ export function useForm<T extends Record<string, any>>(
     asyncSeqRef.current.clear();
   }
 
-  function resetField<K extends keyof T>(name: K) {
+  function resetField(name: string) {
     // cancel any pending debounced async validation for this field
     clearDebounceTimer(name);
 
     // reset field value
-    setValues((prev) => ({ ...prev, [name]: initialValuesRef.current[name] }));
+    setValues((prev) =>
+      setByPath(prev, name, getByPath(initialValuesRef.current, name))
+    );
 
     // clear field error/touched/validating
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete (next as any)[name];
-      return next;
-    });
+    setErrors((prev: any) => unsetByPath(prev, name));
     setTouched((prev) => {
       const next = { ...prev };
       delete (next as any)[name];
@@ -357,38 +525,31 @@ export function useForm<T extends Record<string, any>>(
         return;
       }
 
-      const okSync = validateAllSync(values);
-      if (!okSync) {
-        const nextErrors: Errors<T> = {};
-        for (const name of rulesRef.current.keys()) {
-          const msg = getFieldError(name, values, rulesRef.current);
-          if (msg) nextErrors[name] = msg;
-        }
-        onInvalid?.(nextErrors);
-        return;
-      }
+      // Submit uses a deterministic collection of sync + async errors.
+      const nextErrors = await collectSubmitErrors(values);
+      setErrors(nextErrors);
 
-      // Submit bypasses debounce (immediate async validation)
-      await validateAllAsync(values, { bypassDebounce: true });
+      const hasErrors =
+        nextErrors &&
+        typeof nextErrors === "object" &&
+        Object.keys(nextErrors).length > 0;
 
-      // After async completes, use the latest errors state snapshot
-      const hasErrors = Object.keys(errors).length > 0;
       if (!hasErrors) onValid(values);
-      else onInvalid?.(errors);
+      else onInvalid?.(nextErrors);
     };
   }
 
-  function register<K extends keyof T>(name: K, rules?: Rules<T>) {
+  function register(name: string, rules?: Rules<any>) {
     if (rules) rulesRef.current.set(name, rules);
 
     return {
       name: String(name),
-      value: values[name],
+      value: getByPath(values, name) ?? "",
       onChange: (e: any) => {
         const nextValue = e?.target ? e.target.value : e;
 
         setValues((prev) => {
-          const next = { ...prev, [name]: nextValue };
+          const next: any = setByPath(prev, name, nextValue);
 
           if (validateOn === "change") {
             validateFieldSync(name, next);
@@ -412,7 +573,10 @@ export function useForm<T extends Record<string, any>>(
     };
   }
 
-  const isValid = Object.keys(errors).length === 0;
+  const isValid =
+    errors && typeof errors === "object"
+      ? Object.keys(errors).length === 0
+      : true;
   const isValidating = Object.values(validating).some(Boolean);
 
   return {

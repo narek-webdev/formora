@@ -1,5 +1,5 @@
 import React from "react";
-import { useForm } from "formora";
+import { useForm } from "../../src";
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -8,11 +8,19 @@ function sleep(ms: number) {
 export default function App() {
   const form = useForm({
     initialValues: {
-      email: "",
-      username: "",
-      password: "",
-      age: 0,
-      bio: "",
+      user: {
+        email: "",
+        username: "",
+        password: "",
+        age: 0,
+      },
+      profile: {
+        bio: "",
+        address: {
+          street: "",
+        },
+      },
+      items: [{ name: "" }],
     },
     // change this to "blur" or "submit" while testing
     validateOn: "change",
@@ -100,7 +108,7 @@ export default function App() {
           <input
             style={{ width: "100%", padding: 10, marginTop: 6 }}
             placeholder='Try: "taken@example.com" or type fast: a, ab, abc@...'
-            {...form.register("email", {
+            {...form.register("user.email", {
               required: "Email is required",
               // v0.2 async validation
               validateAsync: validateEmailAsync,
@@ -111,10 +119,11 @@ export default function App() {
         </label>
 
         <div style={{ marginTop: 8 }}>
-          <b>email error:</b> {form.errors.email ?? "(none)"}
+          <b>email error:</b> {form.errors.user?.email ?? "(none)"}
         </div>
         <div style={{ marginTop: 6 }}>
-          <b>validating.email:</b> {form.validating.email ? "yes" : "no"}
+          <b>validating.email:</b>{" "}
+          {form.validating["user.email"] ? "yes" : "no"}
         </div>
 
         <details style={{ marginTop: 8 }}>
@@ -148,7 +157,7 @@ export default function App() {
           <input
             style={{ width: "100%", padding: 10, marginTop: 6 }}
             placeholder="Only letters/numbers/underscore"
-            {...form.register("username", {
+            {...form.register("user.username", {
               required: "Username is required",
               minLength: { value: 3, message: "Min 3 characters" },
               maxLength: { value: 15, message: "Max 15 characters" },
@@ -161,7 +170,7 @@ export default function App() {
         </label>
 
         <div style={{ marginTop: 8 }}>
-          <b>username error:</b> {form.errors.username ?? "(none)"}
+          <b>username error:</b> {form.errors.user?.username ?? "(none)"}
         </div>
       </section>
 
@@ -177,7 +186,7 @@ export default function App() {
             type="password"
             style={{ width: "100%", padding: 10, marginTop: 6 }}
             placeholder="Try 'password' to see custom validation"
-            {...form.register("password", {
+            {...form.register("user.password", {
               required: "Password is required",
               minLength: { value: 8, message: "Min 8 characters" },
               validate: (value) => {
@@ -192,7 +201,7 @@ export default function App() {
         </label>
 
         <div style={{ marginTop: 8 }}>
-          <b>password error:</b> {form.errors.password ?? "(none)"}
+          <b>password error:</b> {form.errors.user?.password ?? "(none)"}
         </div>
       </section>
 
@@ -205,7 +214,7 @@ export default function App() {
           <input
             type="number"
             style={{ width: "100%", padding: 10, marginTop: 6 }}
-            {...form.register("age", {
+            {...form.register("user.age", {
               min: { value: 18, message: "Must be 18+" },
               max: { value: 99, message: "Must be <= 99" },
             })}
@@ -213,7 +222,7 @@ export default function App() {
         </label>
 
         <div style={{ marginTop: 8 }}>
-          <b>age error:</b> {form.errors.age ?? "(none)"}
+          <b>age error:</b> {form.errors.user?.age ?? "(none)"}
         </div>
       </section>
 
@@ -226,14 +235,56 @@ export default function App() {
           <textarea
             style={{ width: "100%", padding: 10, marginTop: 6, minHeight: 90 }}
             placeholder="Write something short…"
-            {...form.register("bio", {
+            {...form.register("profile.bio", {
               maxLength: { value: 50, message: "Max 50 characters" },
             })}
           />
         </label>
 
         <div style={{ marginTop: 8 }}>
-          <b>bio error:</b> {form.errors.bio ?? "(none)"}
+          <b>bio error:</b> {form.errors.profile?.bio ?? "(none)"}
+        </div>
+      </section>
+
+      {/* NESTED OBJECT + ARRAY */}
+      <section style={{ marginTop: 22 }}>
+        <h2 style={{ margin: "12px 0 8px" }}>
+          6) Nested paths — profile.address.street + items.0.name
+        </h2>
+
+        <label style={{ display: "block" }}>
+          Street
+          <input
+            style={{ width: "100%", padding: 10, marginTop: 6 }}
+            placeholder="profile.address.street"
+            {...form.register("profile.address.street", {
+              required: "Street is required",
+              minLength: { value: 3, message: "Min 3 characters" },
+            })}
+          />
+        </label>
+
+        <div style={{ marginTop: 8 }}>
+          <b>street error:</b>{" "}
+          {form.errors.profile?.address?.street ?? "(none)"}
+        </div>
+
+        <div style={{ height: 12 }} />
+
+        <label style={{ display: "block" }}>
+          First item name
+          <input
+            style={{ width: "100%", padding: 10, marginTop: 6 }}
+            placeholder="items.0.name"
+            {...form.register("items.0.name", {
+              required: "Item name required",
+              maxLength: { value: 10, message: "Max 10 characters" },
+            })}
+          />
+        </label>
+
+        <div style={{ marginTop: 8 }}>
+          <b>items[0].name error:</b> {form.errors.items?.[0]?.name ?? "(none)"}
         </div>
       </section>
 
@@ -245,7 +296,7 @@ export default function App() {
           <button
             type="button"
             onClick={() =>
-              form.setValue("email", "taken@example.com", {
+              form.setValue("user.email", "taken@example.com", {
                 shouldTouch: true,
                 shouldValidate: true,
               })
@@ -259,11 +310,17 @@ export default function App() {
             onClick={() =>
               form.setValues(
                 {
-                  email: "john@example.com",
-                  username: "john_25",
-                  password: "S3cretPass!",
-                  age: 25,
-                  bio: "Hello from Formora",
+                  user: {
+                    email: "john@example.com",
+                    username: "john_25",
+                    password: "S3cretPass!",
+                    age: 25,
+                  },
+                  profile: {
+                    bio: "Hello from Formora",
+                    address: { street: "Abovyan" },
+                  },
+                  items: [{ name: "VIP" }],
                 },
                 { shouldTouch: true, shouldValidate: true }
               )
@@ -277,11 +334,17 @@ export default function App() {
             onClick={() =>
               form.setValues(
                 {
-                  email: "bad",
-                  username: "??",
-                  password: "password",
-                  age: 10,
-                  bio: "This bio is definitely going to be longer than fifty characters. Too long!",
+                  user: {
+                    email: "bad",
+                    username: "??",
+                    password: "password",
+                    age: 10,
+                  },
+                  profile: {
+                    bio: "This bio is definitely going to be longer than fifty characters. Too long!",
+                    address: { street: "" },
+                  },
+                  items: [{ name: "ThisIsWayTooLong" }],
                 },
                 { shouldTouch: true, shouldValidate: true }
               )
@@ -292,12 +355,12 @@ export default function App() {
 
           <button
             type="button"
-            onClick={() => form.setError("email", "Server: email blocked")}
+            onClick={() => form.setError("user.email", "Server: email blocked")}
           >
             setError(email)
           </button>
 
-          <button type="button" onClick={() => form.clearError("email")}>
+          <button type="button" onClick={() => form.clearError("user.email")}>
             clearError(email)
           </button>
 
@@ -305,7 +368,10 @@ export default function App() {
             clearErrors()
           </button>
 
-          <button type="button" onClick={() => form.setTouched("email", true)}>
+          <button
+            type="button"
+            onClick={() => form.setTouched("user.email", true)}
+          >
             setTouched(email=true)
           </button>
 
@@ -313,7 +379,7 @@ export default function App() {
             touchAll()
           </button>
 
-          <button type="button" onClick={() => form.resetField("email")}>
+          <button type="button" onClick={() => form.resetField("user.email")}>
             resetField(email)
           </button>
 
