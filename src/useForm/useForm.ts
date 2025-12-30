@@ -144,6 +144,10 @@ export function useForm<T extends Record<string, any>>(
   const blockSubmitWhileValidating = options.blockSubmitWhileValidating ?? true;
 
   const [values, setValues] = React.useState<T>(options.initialValues);
+  const valuesRef = React.useRef<T>(options.initialValues);
+  React.useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
   const [errors, setErrors] = React.useState<any>({});
   const [touched, setTouched] = React.useState<Record<string, boolean>>({});
   const [validating, setValidating] = React.useState<Record<string, boolean>>(
@@ -207,15 +211,17 @@ export function useForm<T extends Record<string, any>>(
   }
 
   function validateFieldSync(name: string, nextValues: T) {
-    const msg = getFieldError(name, nextValues, rulesRef.current);
+    const readableValues = asPathReadableObject(nextValues);
+    const msg = getFieldError(name, readableValues as any, rulesRef.current);
     setFieldError(name, msg);
     return !msg;
   }
 
   function validateAllSync(nextValues: T) {
+    const readableValues = asPathReadableObject(nextValues);
     const nextErrors: any = {};
     for (const name of rulesRef.current.keys()) {
-      const msg = getFieldError(name, nextValues, rulesRef.current);
+      const msg = getFieldError(name, readableValues as any, rulesRef.current);
       if (msg) Object.assign(nextErrors, setByPath(nextErrors, name, msg));
     }
     setErrors(nextErrors);
@@ -227,11 +233,16 @@ export function useForm<T extends Record<string, any>>(
     nextValues: T,
     opts?: { bypassDebounce?: boolean }
   ) {
+    const readableValues = asPathReadableObject(nextValues);
     const rules = rulesRef.current.get(name);
     const validateAsync = rules?.validateAsync;
 
     // sync-first short-circuit
-    const syncMsg = getFieldError(name, nextValues, rulesRef.current);
+    const syncMsg = getFieldError(
+      name,
+      readableValues as any,
+      rulesRef.current
+    );
     if (syncMsg) {
       clearDebounceTimer(name);
       setFieldError(name, syncMsg);
@@ -266,7 +277,13 @@ export function useForm<T extends Record<string, any>>(
         if (!isLatestAsyncSeq(asyncSeqRef.current, name, scheduledSeq)) return;
 
         // re-check sync rules before running async
-        const againSync = getFieldError(name, nextValues, rulesRef.current);
+        const latestValues = valuesRef.current;
+        const latestReadableValues = asPathReadableObject(latestValues);
+        const againSync = getFieldError(
+          name,
+          latestReadableValues as any,
+          rulesRef.current
+        );
         if (againSync) {
           setFieldError(name, againSync);
           setFieldValidating(name, false);
@@ -275,8 +292,8 @@ export function useForm<T extends Record<string, any>>(
 
         const runSeq = nextAsyncSeq(asyncSeqRef.current, name);
         const msg = await validateAsync(
-          getByPath(nextValues, name),
-          nextValues
+          getByPath(latestValues, name),
+          latestReadableValues as any
         );
 
         if (!isMountedRef.current) return;
@@ -294,7 +311,10 @@ export function useForm<T extends Record<string, any>>(
     const seq = nextAsyncSeq(asyncSeqRef.current, name);
     setFieldValidating(name, true);
 
-    const msg = await validateAsync(getByPath(nextValues, name), nextValues);
+    const msg = await validateAsync(
+      getByPath(nextValues, name),
+      readableValues as any
+    );
 
     if (!isMountedRef.current) return true;
     if (!isLatestAsyncSeq(asyncSeqRef.current, name, seq)) return true; // stale
@@ -336,11 +356,12 @@ export function useForm<T extends Record<string, any>>(
   }
   // Deterministically collect submit-time errors (sync + async) for all registered fields
   async function collectSubmitErrors(nextValues: T) {
+    const readableValues = asPathReadableObject(nextValues);
     const nextErrors: any = {};
 
     // 1) Sync rules for all registered fields
     for (const name of rulesRef.current.keys()) {
-      const msg = getFieldError(name, nextValues, rulesRef.current);
+      const msg = getFieldError(name, readableValues as any, rulesRef.current);
       if (msg) Object.assign(nextErrors, setByPath(nextErrors, name, msg));
     }
 
@@ -357,7 +378,7 @@ export function useForm<T extends Record<string, any>>(
 
       const msg = await rules.validateAsync(
         getByPath(nextValues, name),
-        nextValues
+        readableValues as any
       );
 
       if (!isMountedRef.current) continue;
@@ -526,7 +547,8 @@ export function useForm<T extends Record<string, any>>(
       }
 
       // Submit uses a deterministic collection of sync + async errors.
-      const nextErrors = await collectSubmitErrors(values);
+      const submitValues = valuesRef.current;
+      const nextErrors = await collectSubmitErrors(submitValues);
       setErrors(nextErrors);
 
       const hasErrors =
@@ -534,7 +556,7 @@ export function useForm<T extends Record<string, any>>(
         typeof nextErrors === "object" &&
         Object.keys(nextErrors).length > 0;
 
-      if (!hasErrors) onValid(values);
+      if (!hasErrors) onValid(submitValues);
       else onInvalid?.(nextErrors);
     };
   }

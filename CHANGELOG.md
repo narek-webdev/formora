@@ -20,6 +20,26 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ---
 
+## [0.4.0] - 2025-12-30
+
+### Added
+
+- **Cross-field validation** via `validate(value, values)`.
+- **Cross-field async validation** via `validateAsync(value, values)`.
+- Submit-time validation now validates **all registered fields**, even if untouched.
+- Deterministic validation using internal value snapshots.
+
+### Changed
+
+- Async validation now always runs against a consistent values snapshot to avoid stale cross-field results.
+- Debounced async validation behavior is now fully deterministic under rapid input changes.
+
+### Fixed
+
+- Prevented stale debounced async validators from using outdated form values.
+
+---
+
 ## [0.3.0] - 2025-12-28
 
 ### Added
@@ -87,7 +107,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/narek-webdev/formora/releases/tag/v0.4.0
 [0.3.0]: https://github.com/narek-webdev/formora/releases/tag/v0.3.0
 [0.2.0]: https://github.com/narek-webdev/formora/releases/tag/v0.2.0
 [0.1.0]: https://github.com/narek-webdev/formora/releases/tag/v0.1.0

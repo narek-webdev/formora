@@ -15,6 +15,7 @@ A **headless form state and validation hook for React**.
 - ✅ Form state management (values)
 - ✅ Validation on **change**, **blur**, or **submit**
 - ✅ Built-in validation rules (`required`, `pattern`, `minLength`, `maxLength`, `min`, `max`)
+- ✅ Cross-field validation (v0.4)
 - ✅ Async validation (race-condition safe)
 - ✅ Debounced async validation (v0.2)
 - ✅ Field-level `validating` state
@@ -122,6 +123,7 @@ useForm<T>({
 - `min: number | { value: number; message: string }` (numbers / numeric strings)
 - `max: number | { value: number; message: string }` (numbers / numeric strings)
 - `validate: (value, values) => string | undefined`
+- `validateAsync: (value, values) => Promise<string | undefined>`
 
 ---
 
@@ -167,6 +169,62 @@ register("email", {
 - Debounce applies on `change`
 - `blur` and `submit` **bypass debounce** and run async validation immediately
 - `validating[field]` becomes `true` as soon as async validation is scheduled
+
+---
+
+## 🔗 Cross-field Validation (v0.4)
+
+Formora supports **cross-field validation**, allowing a field’s validation logic to depend on the values of other fields.
+
+Cross-field validation is **explicit** and **predictable**:
+
+- Validation logic belongs to the field where the rule is defined
+- Errors are assigned only to that field
+- On submit, **all registered fields are validated**, even if untouched
+
+### Example: Confirm password
+
+```ts
+register("confirmPassword", {
+  validate: (value, values) =>
+    value !== values.password ? "Passwords do not match" : undefined,
+});
+```
+
+### Example: Conditional required field
+
+```ts
+register("companyName", {
+  validate: (value, values) =>
+    values.isCompany && !value ? "Company name is required" : undefined,
+});
+```
+
+### Example: Date range validation
+
+```ts
+register("endDate", {
+  validate: (value, values) => {
+    if (!value || !values.startDate) return undefined;
+    return new Date(value) <= new Date(values.startDate)
+      ? "End date must be after start date"
+      : undefined;
+  },
+});
+```
+
+### Async cross-field validation
+
+```ts
+register("email", {
+  validateAsync: async (value, values) => {
+    await new Promise((r) => setTimeout(r, 300));
+    return value !== values.confirmEmail ? "Emails do not match" : undefined;
+  },
+});
+```
+
+> ℹ️ Formora does **not** auto-revalidate dependent fields when other fields change. This keeps validation behavior explicit and predictable.
 
 ---
 
@@ -339,7 +397,7 @@ Planned and possible future improvements:
 
 - ✅ Async validation UX improvements (debouncing, submit behavior)
 - ✅ Form state helpers (`setValue`, `setValues`, `reset`, `resetField`, error & touched helpers)
-- Cross-field validation helpers
+- ✅ Cross-field validation
 - Schema adapters (Zod, Valibot) — optional, not required
 - Nested fields and field arrays (longer-term)
 - Improved playground examples
