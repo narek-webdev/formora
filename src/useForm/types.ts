@@ -26,14 +26,14 @@ type KeyOf<T> = Extract<keyof T, string>;
 
 type PathImpl<T> = T extends Primitive
   ? never
-  : T extends Array<infer U>
-  ? // arrays: "0" | "0.name" | "123" | "123.name" etc.
-    `${number}` | `${number}.${Path<U>}`
+  : T extends Array<any>
+  ? never
   : {
       [K in KeyOf<T>]: T[K] extends Primitive
         ? `${K}`
-        : T[K] extends Array<infer U>
-        ? `${K}` | `${K}.${number}` | `${K}.${number}.${Path<U>}`
+        : T[K] extends Array<any>
+        ? // v0.5: arrays are not supported as nested paths yet
+          `${K}`
         : `${K}` | `${K}.${Path<T[K]>}`;
     }[KeyOf<T>];
 
@@ -53,16 +53,14 @@ type Split<S extends string, D extends string> = string extends S
   ? [T, ...Split<U, D>]
   : [S];
 
-type ToKey<S extends string> = S extends `${number}` ? number : S;
+type ToKey<S extends string> = S;
 
 type PathValueImpl<T, Parts extends readonly string[]> = Parts extends []
   ? T
   : Parts extends [infer H, ...infer R]
   ? H extends string
     ? R extends string[]
-      ? T extends Array<infer U>
-        ? PathValueImpl<U, R>
-        : ToKey<H> extends keyof T
+      ? ToKey<H> extends keyof T
         ? PathValueImpl<T[ToKey<H>], R>
         : any
       : any
@@ -71,11 +69,24 @@ type PathValueImpl<T, Parts extends readonly string[]> = Parts extends []
 
 export type PathValue<T, P extends string> = PathValueImpl<T, Split<P, ".">>;
 
-// Nested error object: matches the shape of values, but leaves room for arrays/objects.
-// Each leaf error is a string message.
-export type NestedErrors = Record<string, any>;
+// Nested state objects (v0.5): match the shape of values.
+// Leaf nodes hold the specific value type (string for errors, boolean for touched/validating).
 
-export type Errors<T> = NestedErrors;
+type IsPlainObject<T> = T extends Primitive
+  ? false
+  : T extends Array<any>
+  ? false
+  : T extends object
+  ? true
+  : false;
+
+type DeepMap<T, V> = {
+  [K in KeyOf<T>]?: IsPlainObject<T[K]> extends true ? DeepMap<T[K], V> : V;
+};
+
+export type Errors<T> = DeepMap<T, string>;
+export type Touched<T> = DeepMap<T, boolean>;
+export type Validating<T> = DeepMap<T, boolean>;
 
 export type Rules<T> = {
   required?: boolean | string; // true or custom message
@@ -103,9 +114,6 @@ export type SetValuesOptions = {
   /** If true, async validation runs immediately (ignores debounce). */
   bypassDebounce?: boolean;
 };
-
-export type Touched<T> = Record<FieldPath<T>, boolean>;
-export type Validating<T> = Record<FieldPath<T>, boolean>;
 
 export type UseFormReturn<T> = {
   values: T;

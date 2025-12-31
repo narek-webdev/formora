@@ -228,6 +228,73 @@ register("email", {
 
 ---
 
+## 🧬 Nested Fields (v0.5)
+
+Formora supports **nested object fields** using dot-notation paths.
+
+This allows you to work with real-world form shapes while keeping validation **explicit and predictable**.
+
+### Supported paths
+
+```ts
+"user.email";
+"profile.address.street";
+```
+
+> ℹ️ v0.5 supports **objects only**. Field arrays (e.g. `items.0.name`) are intentionally not supported yet.
+
+---
+
+### Basic example
+
+```tsx
+const form = useForm({
+  initialValues: {
+    user: { email: "" },
+    profile: { address: { street: "" } },
+  },
+});
+
+<input {...form.register("user.email", { required: "Email is required" })} />
+<input {...form.register("profile.address.street")} />
+
+{form.errors.user?.email && <p>{form.errors.user.email}</p>}
+```
+
+---
+
+### Nested helpers
+
+All helpers work with nested paths:
+
+```ts
+form.setValue("user.email", "test@example.com");
+form.resetField("profile.address.street");
+form.setTouched("user.email", true);
+form.setError("user.email", "Invalid email");
+```
+
+---
+
+### Nested cross-field validation
+
+Cross-field validation works seamlessly with nested values:
+
+```ts
+register("confirmPassword", {
+  validate: (value, values) =>
+    value !== values.user.password ? "Passwords do not match" : undefined,
+});
+```
+
+Nested validation follows the same rules:
+
+- Validation is explicit
+- Errors are assigned only to the field being validated
+- On submit, **all registered fields are validated**
+
+---
+
 ## 🧰 DX Helpers (v0.3)
 
 Formora provides a small set of **developer experience helpers** for common imperative form actions.
@@ -398,8 +465,8 @@ Planned and possible future improvements:
 - ✅ Async validation UX improvements (debouncing, submit behavior)
 - ✅ Form state helpers (`setValue`, `setValues`, `reset`, `resetField`, error & touched helpers)
 - ✅ Cross-field validation
-- Schema adapters (Zod, Valibot) — optional, not required
-- Nested fields and field arrays (longer-term)
+- ✅ Nested object fields (v0.5)
+- Field arrays (append/remove) — planned
 - Improved playground examples
 
 ---
