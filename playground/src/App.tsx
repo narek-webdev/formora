@@ -21,6 +21,7 @@ export default function App() {
           street: "",
         },
       },
+      items: [{ name: "" }],
     },
     // change this to "blur" or "submit" while testing
     validateOn: "change",
@@ -70,7 +71,7 @@ export default function App() {
       <p style={{ marginTop: 8 }}>
         Test everything we built so far: sync rules, async validation
         (race-safe), debounced async validation, cross-field validation, v0.5
-        nested fields, and DX helpers.
+        nested fields, v0.6 field arrays, and DX helpers.
       </p>
 
       <div
@@ -292,7 +293,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* NESTED FIELDS (v0.5 objects only) */}
+      {/* NESTED FIELDS (v0.5) */}
       <section style={{ marginTop: 22 }}>
         <h2 style={{ margin: "12px 0 8px" }}>
           7) Nested fields (v0.5) — profile.address.street
@@ -314,6 +315,95 @@ export default function App() {
           <b>street error:</b>{" "}
           {form.errors.profile?.address?.street ?? "(none)"}
         </div>
+      </section>
+
+      {/* FIELD ARRAYS (v0.6) */}
+      <section style={{ marginTop: 22 }}>
+        <h2 style={{ margin: "12px 0 8px" }}>
+          8) Field arrays (v0.6) — items.${"{"}i{"}"}.name
+        </h2>
+
+        <p style={{ marginTop: 6, color: "#444" }}>
+          Use <b>append</b> and <b>remove</b> to manage arrays. Validation uses
+          dot-index paths like <code>items.0.name</code>.
+        </p>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() =>
+              form.append("items", { name: "" }, { shouldTouch: true })
+            }
+          >
+            append item
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              form.setValues(
+                {
+                  ...form.values,
+                  items: [{ name: "" }, { name: "" }, { name: "" }],
+                },
+                { shouldTouch: true }
+              )
+            }
+          >
+            seed 3 items
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+          {form.values.items.map((item, i) => (
+            <div
+              key={i}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 10,
+                padding: 12,
+              }}
+            >
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <label style={{ flex: 1 }}>
+                  Item name #{i + 1}
+                  <input
+                    style={{ width: "100%", padding: 10, marginTop: 6 }}
+                    placeholder={`items.${i}.name`}
+                    {...form.register(`items.${i}.name`, {
+                      required: "Item name is required",
+                      minLength: { value: 2, message: "Min 2 characters" },
+                    })}
+                  />
+                </label>
+
+                <button type="button" onClick={() => form.remove("items", i)}>
+                  remove
+                </button>
+              </div>
+
+              <div style={{ marginTop: 8 }}>
+                <b>item error:</b> {form.errors.items?.[i]?.name ?? "(none)"}
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <b>touched:</b> {form.touched.items?.[i]?.name ? "yes" : "no"}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <details style={{ marginTop: 8 }}>
+          <summary>How to verify shifting behavior</summary>
+          <ul>
+            <li>
+              Click <b>seed 3 items</b>, then type only in the 2nd item.
+            </li>
+            <li>Remove the 1st item — the old 2nd item becomes the new 1st.</li>
+            <li>
+              Errors and touched state for that item should shift with it.
+            </li>
+          </ul>
+        </details>
       </section>
 
       {/* DX HELPERS */}

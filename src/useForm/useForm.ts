@@ -381,10 +381,10 @@ export function useForm<T extends Record<string, any>>(
     const { shouldValidate, shouldTouch, bypassDebounce = true } = opts;
 
     if (shouldTouch) {
-      setTouched((prev) => {
-        const next: any = { ...prev };
+      setTouched((prev: any) => {
+        let next: any = prev;
         for (const k of Object.keys(partial) as Array<keyof T>) {
-          next[k] = true;
+          next = setByPath(next, String(k), true);
         }
         return next;
       });
@@ -435,8 +435,8 @@ export function useForm<T extends Record<string, any>>(
     // reset state
     setValues(initialValuesRef.current);
     setErrors({});
-    setTouched({});
-    setValidating({});
+    setTouched({} as Touched<T>);
+    setValidating({} as Validating<T>);
     setSubmitCount(0);
 
     // reset async sequence tracking (optional but keeps state tidy)
@@ -461,6 +461,85 @@ export function useForm<T extends Record<string, any>>(
     asyncSeqRef.current.delete(name);
   }
 
+  // v0.6 — Field array helpers (append/remove)
+
+  function getArrayAtPath(values: any, name: string): any[] {
+    const arr = getByPath(values, name);
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  function shiftNestedStateAfterRemove(
+    obj: any,
+    path: string,
+    index: number
+  ): any {
+    const arr = getByPath(obj, path);
+    if (!Array.isArray(arr)) return obj;
+
+    const nextArr = arr.slice();
+    nextArr.splice(index, 1);
+
+    return setByPath(obj, path, nextArr);
+  }
+
+  function appendArray(
+    name: string,
+    value: any,
+    opts: { shouldValidate?: boolean; shouldTouch?: boolean } = {}
+  ) {
+    setValues((prev) => {
+      const arr = getArrayAtPath(prev, name);
+      const next = setByPath(prev, name, [...arr, value]);
+
+      if (opts.shouldTouch) {
+        setTouched((t: any) => setByPath(t, `${name}.${arr.length}`, true));
+      }
+
+      if (opts.shouldValidate) {
+        const index = arr.length;
+        const keyPrefix = `${name}.${index}`;
+        for (const key of rulesRef.current.keys()) {
+          if (key === keyPrefix || key.startsWith(keyPrefix + ".")) {
+            validateFieldSync(key, next);
+            void validateFieldAsync(key, next);
+          }
+        }
+      }
+
+      return next;
+    });
+  }
+
+  function removeArray(
+    name: string,
+    index: number,
+    opts: { shouldValidate?: boolean; shouldTouch?: boolean } = {}
+  ) {
+    setValues((prev) => {
+      const arr = getArrayAtPath(prev, name);
+      if (!arr.length || index < 0 || index >= arr.length) return prev;
+
+      const nextArr = arr.slice();
+      nextArr.splice(index, 1);
+      const next = setByPath(prev, name, nextArr);
+
+      setErrors((e: any) => shiftNestedStateAfterRemove(e, name, index));
+      setTouched((t: any) => shiftNestedStateAfterRemove(t, name, index));
+      setValidating((v: any) => shiftNestedStateAfterRemove(v, name, index));
+
+      if (opts.shouldValidate) {
+        for (const key of rulesRef.current.keys()) {
+          if (key.startsWith(name + ".")) {
+            validateFieldSync(key, next);
+            void validateFieldAsync(key, next);
+          }
+        }
+      }
+
+      return next;
+    });
+  }
+
   function handleSubmit(
     onValid: (vals: T) => void,
     onInvalid?: (errs: Errors<T>) => void
@@ -472,10 +551,7 @@ export function useForm<T extends Record<string, any>>(
       touchAllRegisteredFields();
 
       // If configured, block submit while any field is validating (debounced or in-flight)
-      if (
-        blockSubmitWhileValidating &&
-        Object.values(validating).some(Boolean)
-      ) {
+      if (blockSubmitWhileValidating && hasAnyTrue(validating)) {
         onInvalid?.(errors);
         return;
       }
@@ -549,6 +625,8 @@ export function useForm<T extends Record<string, any>>(
     touchAll,
     reset,
     resetField,
+    append: appendArray,
+    remove: removeArray,
     validateField: validateFieldSync,
     handleSubmit,
     submitCount,

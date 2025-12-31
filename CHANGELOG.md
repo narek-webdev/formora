@@ -20,6 +20,28 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ---
 
+## [0.6.0] - 2026-01-01
+
+### Added
+
+- **Field arrays (v0.6)** with explicit `append` and `remove` helpers.
+- Official support for **dot-index paths** for array fields (e.g. `items.0.name`).
+- Full validation support for array fields, including submit-time validation of registered array items.
+- Automatic shifting of `errors`, `touched`, and `validating` state when removing array items.
+- New test suite covering array append, remove, index shifting, and submit validation behavior.
+
+### Changed
+
+- Internal path utilities now support numeric segments for arrays while keeping dot-notation only.
+- Form-level `isValidating` and submit blocking logic now correctly account for nested and array validation state.
+
+### Fixed
+
+- Prevented stale errors and touched state after removing array items.
+- Improved type safety for nested and array-based form state under strict TypeScript settings.
+
+---
+
 ## [0.5.0] - 2025-12-31
 
 ### Added
@@ -131,7 +153,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/narek-webdev/formora/releases/tag/v0.6.0
 [0.5.0]: https://github.com/narek-webdev/formora/releases/tag/v0.5.0
 [0.4.0]: https://github.com/narek-webdev/formora/releases/tag/v0.4.0
 [0.3.0]: https://github.com/narek-webdev/formora/releases/tag/v0.3.0

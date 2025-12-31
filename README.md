@@ -24,6 +24,8 @@ A **headless form state and validation hook for React**.
 - ✅ Fully controlled inputs
 - ✅ TypeScript-first, strongly typed field names
 - ✅ Headless (bring your own UI)
+- ✅ Nested object fields (v0.5)
+- ✅ Field arrays (append/remove) with dot-index paths (v0.6)
 
 ---
 
@@ -241,7 +243,7 @@ This allows you to work with real-world form shapes while keeping validation **e
 "profile.address.street";
 ```
 
-> ℹ️ v0.5 supports **objects only**. Field arrays (e.g. `items.0.name`) are intentionally not supported yet.
+> ℹ️ v0.5 introduced nested object paths. Field arrays (e.g. `items.0.name`) are supported starting in **v0.6**.
 
 ---
 
@@ -292,6 +294,67 @@ Nested validation follows the same rules:
 - Validation is explicit
 - Errors are assigned only to the field being validated
 - On submit, **all registered fields are validated**
+
+---
+
+---
+
+## 🧩 Field Arrays (v0.6)
+
+Formora supports **basic field arrays** with `append` and `remove` helpers.
+
+Array fields use **dot-index paths** (e.g. `items.0.name`). Bracket syntax like `items[0].name` is intentionally not supported.
+
+### Basic example
+
+```tsx
+const form = useForm({
+  initialValues: {
+    items: [{ name: "" }],
+  },
+  validateOn: "submit",
+});
+
+function addItem() {
+  form.append("items", { name: "" }, { shouldTouch: true });
+}
+
+function removeItem(i: number) {
+  form.remove("items", i);
+}
+
+return (
+  <form onSubmit={form.handleSubmit(console.log)}>
+    {form.values.items.map((_, i) => (
+      <div key={i}>
+        <input
+          {...form.register(`items.${i}.name`, {
+            required: "Name required",
+          })}
+        />
+
+        {form.errors.items?.[i]?.name && <p>{form.errors.items[i].name}</p>}
+
+        <button type="button" onClick={() => removeItem(i)}>
+          Remove
+        </button>
+      </div>
+    ))}
+
+    <button type="button" onClick={addItem}>
+      Add item
+    </button>
+
+    <button type="submit">Submit</button>
+  </form>
+);
+```
+
+### Behavior notes
+
+- `append(name, value)` adds an item to the end of the array.
+- `remove(name, index)` removes an item and **shifts** the array branch in `errors`, `touched`, and `validating`.
+- On submit, **all registered fields** (including array fields) are validated.
 
 ---
 
@@ -466,7 +529,7 @@ Planned and possible future improvements:
 - ✅ Form state helpers (`setValue`, `setValues`, `reset`, `resetField`, error & touched helpers)
 - ✅ Cross-field validation
 - ✅ Nested object fields (v0.5)
-- Field arrays (append/remove) — planned
+- ✅ Field arrays (append/remove) with dot-index paths (v0.6)
 - Improved playground examples
 
 ---

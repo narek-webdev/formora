@@ -26,14 +26,17 @@ type KeyOf<T> = Extract<keyof T, string>;
 
 type PathImpl<T> = T extends Primitive
   ? never
-  : T extends Array<any>
-  ? never
+  : T extends Array<infer U>
+  ? U extends Primitive
+    ? `${number}`
+    : `${number}` | `${number}.${Path<U>}`
   : {
       [K in KeyOf<T>]: T[K] extends Primitive
         ? `${K}`
-        : T[K] extends Array<any>
-        ? // v0.5: arrays are not supported as nested paths yet
-          `${K}`
+        : T[K] extends Array<infer U>
+        ? U extends Primitive
+          ? `${K}` | `${K}.${number}`
+          : `${K}` | `${K}.${number}` | `${K}.${number}.${Path<U>}`
         : `${K}` | `${K}.${Path<T[K]>}`;
     }[KeyOf<T>];
 
@@ -41,6 +44,24 @@ export type Path<T> = PathImpl<T>;
 
 // Backward-compatible: anything can still be passed, but Path<T> gives autocomplete.
 export type FieldPath<T = any> = Path<T> | (string & {});
+
+// Paths that point to array fields (used by append/remove)
+
+type FieldArrayPathImpl<T> = T extends Primitive
+  ? never
+  : T extends Array<any>
+  ? never
+  : {
+      [K in KeyOf<T>]: T[K] extends Array<any>
+        ? `${K}`
+        : T[K] extends object
+        ? `${K}.${FieldArrayPath<T[K]>}`
+        : never;
+    }[KeyOf<T>];
+
+export type FieldArrayPath<T> = FieldArrayPathImpl<T>;
+
+type ArrayElement<TArr> = TArr extends Array<infer U> ? U : never;
 
 // Infer the value type at a given dot-path.
 // Note: only dot notation is typed; bracket notation falls back to `any`.
@@ -53,7 +74,7 @@ type Split<S extends string, D extends string> = string extends S
   ? [T, ...Split<U, D>]
   : [S];
 
-type ToKey<S extends string> = S;
+type ToKey<S extends string> = S extends `${number}` ? number : S;
 
 type PathValueImpl<T, Parts extends readonly string[]> = Parts extends []
   ? T
@@ -69,20 +90,16 @@ type PathValueImpl<T, Parts extends readonly string[]> = Parts extends []
 
 export type PathValue<T, P extends string> = PathValueImpl<T, Split<P, ".">>;
 
-// Nested state objects (v0.5): match the shape of values.
+// Nested state objects (v0.6): match the shape of values, including arrays.
 // Leaf nodes hold the specific value type (string for errors, boolean for touched/validating).
 
-type IsPlainObject<T> = T extends Primitive
-  ? false
-  : T extends Array<any>
-  ? false
+type DeepMap<T, V> = T extends Primitive
+  ? V
+  : T extends Array<infer U>
+  ? Array<DeepMap<U, V>>
   : T extends object
-  ? true
-  : false;
-
-type DeepMap<T, V> = {
-  [K in KeyOf<T>]?: IsPlainObject<T[K]> extends true ? DeepMap<T[K], V> : V;
-};
+  ? { [K in KeyOf<T>]?: DeepMap<T[K], V> }
+  : V;
 
 export type Errors<T> = DeepMap<T, string>;
 export type Touched<T> = DeepMap<T, boolean>;
@@ -152,6 +169,25 @@ export type UseFormReturn<T> = {
   resetField: {
     <P extends Path<T>>(name: P): void;
     (name: string): void;
+  };
+
+  // Field array helpers (v0.6)
+  append: {
+    <P extends FieldArrayPath<T>>(
+      name: P,
+      value: ArrayElement<PathValue<T, P>>,
+      opts?: SetValueOptions
+    ): void;
+    (name: string, value: any, opts?: SetValueOptions): void;
+  };
+
+  remove: {
+    <P extends FieldArrayPath<T>>(
+      name: P,
+      index: number,
+      opts?: SetValueOptions
+    ): void;
+    (name: string, index: number, opts?: SetValueOptions): void;
   };
 
   // Error helpers
