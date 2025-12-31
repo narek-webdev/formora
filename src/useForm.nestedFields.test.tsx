@@ -2,8 +2,8 @@ import { describe, test, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useForm } from "./useForm/useForm";
 
-// Note: This file focuses only on nested field paths (dot/bracket notation)
-// Examples: "user.email", "items.0.name", "items[0].name"
+// Note: v0.5 supports nested OBJECT paths using dot notation only.
+// Examples: "user.email", "profile.address.street"
 
 describe("useForm - nested fields", () => {
   test("setValue/getValue works for dot paths", () => {
@@ -21,6 +21,20 @@ describe("useForm - nested fields", () => {
     expect(result.current.values.user.email).toBe("a@b.com");
 
     // getValue is not part of public API (yet), so we assert via values
+  });
+
+  test("setValue works for deep nested object path (profile.address.street)", () => {
+    const { result } = renderHook(() =>
+      useForm({
+        initialValues: { profile: { address: { street: "" } } },
+      })
+    );
+
+    act(() => {
+      result.current.setValue("profile.address.street", "Abovyan");
+    });
+
+    expect(result.current.values.profile.address.street).toBe("Abovyan");
   });
 
   test("register reads nested value", () => {
@@ -58,7 +72,7 @@ describe("useForm - nested fields", () => {
     expect(result.current.errors.user.email).toBeDefined();
   });
 
-  test("touched uses path string key", () => {
+  test("touched is nested (user.email) after blur", () => {
     const { result } = renderHook(() =>
       useForm({
         initialValues: { user: { email: "" } },
@@ -72,38 +86,9 @@ describe("useForm - nested fields", () => {
       props.onBlur();
     });
 
-    expect(result.current.touched["user.email"]).toBe(true);
+    expect(result.current.touched.user?.email).toBe(true);
   });
 
-  test("array path works (items.0.name)", () => {
-    const { result } = renderHook(() =>
-      useForm({
-        initialValues: { items: [{ name: "" }] },
-      })
-    );
-
-    act(() => {
-      result.current.setValue("items.0.name", "VIP");
-    });
-
-    expect(result.current.values.items).toHaveLength(1);
-    expect(result.current.values.items[0]?.name).toBe("VIP");
-  });
-
-  test("array bracket path works (items[0].name)", () => {
-    const { result } = renderHook(() =>
-      useForm({
-        initialValues: { items: [{ name: "" }] },
-      })
-    );
-
-    act(() => {
-      result.current.setValue("items[0].name", "VIP");
-    });
-
-    expect(result.current.values.items).toHaveLength(1);
-    expect(result.current.values.items[0]?.name).toBe("VIP");
-  });
   test("maxLength validates nested string on submit", async () => {
     const onValid = vi.fn();
     const onInvalid = vi.fn();

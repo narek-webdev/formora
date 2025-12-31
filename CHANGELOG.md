@@ -20,6 +20,30 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ---
 
+## [0.5.0] - 2025-12-31
+
+### Added
+
+- **Nested object field support** using dot-notation paths (e.g. `user.email`, `profile.address.street`).
+- Nested form state for `values`, `errors`, `touched`, and `validating` matching the shape of `initialValues`.
+- Full nested-path support across all helpers:
+  - `register`, `setValue`, `setValues`, `resetField`
+  - `setError`, `clearError`, `setTouched`, `touchAll`
+- Cross-field validation compatibility with nested values.
+- New test suite covering nested field registration, updates, validation, and submit behavior.
+
+### Changed
+
+- Internal path handling is now **object-only and explicit**, removing legacy array/bracket path parsing.
+- Validation, touched, and validating state are now managed as nested objects instead of flat path maps.
+
+### Fixed
+
+- Eliminated inconsistencies between flat path keys and nested state access.
+- Improved correctness of submit-time validation for nested registered fields.
+
+---
+
 ## [0.4.0] - 2025-12-30
 
 ### Added
@@ -107,7 +131,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/narek-webdev/formora/releases/tag/v0.5.0
 [0.4.0]: https://github.com/narek-webdev/formora/releases/tag/v0.4.0
 [0.3.0]: https://github.com/narek-webdev/formora/releases/tag/v0.3.0
 [0.2.0]: https://github.com/narek-webdev/formora/releases/tag/v0.2.0

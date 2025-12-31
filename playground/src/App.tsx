@@ -21,7 +21,6 @@ export default function App() {
           street: "",
         },
       },
-      items: [{ name: "" }],
     },
     // change this to "blur" or "submit" while testing
     validateOn: "change",
@@ -70,7 +69,8 @@ export default function App() {
       <h1 style={{ margin: 0 }}>Formora Playground</h1>
       <p style={{ marginTop: 8 }}>
         Test everything we built so far: sync rules, async validation
-        (race-safe), debounced async validation, and DX helpers.
+        (race-safe), debounced async validation, cross-field validation, v0.5
+        nested fields, and DX helpers.
       </p>
 
       <div
@@ -123,8 +123,7 @@ export default function App() {
           <b>email error:</b> {form.errors.user?.email ?? "(none)"}
         </div>
         <div style={{ marginTop: 6 }}>
-          <b>validating.email:</b>{" "}
-          {form.validating["user.email"] ? "yes" : "no"}
+          <b>validating.email:</b> {form.validating.user?.email ? "yes" : "no"}
         </div>
 
         <details style={{ marginTop: 8 }}>
@@ -293,10 +292,10 @@ export default function App() {
         </div>
       </section>
 
-      {/* NESTED OBJECT + ARRAY */}
+      {/* NESTED FIELDS (v0.5 objects only) */}
       <section style={{ marginTop: 22 }}>
         <h2 style={{ margin: "12px 0 8px" }}>
-          7) Nested paths — profile.address.street + items.0.name
+          7) Nested fields (v0.5) — profile.address.street
         </h2>
 
         <label style={{ display: "block" }}>
@@ -314,24 +313,6 @@ export default function App() {
         <div style={{ marginTop: 8 }}>
           <b>street error:</b>{" "}
           {form.errors.profile?.address?.street ?? "(none)"}
-        </div>
-
-        <div style={{ height: 12 }} />
-
-        <label style={{ display: "block" }}>
-          First item name
-          <input
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder="items.0.name"
-            {...form.register("items.0.name", {
-              required: "Item name required",
-              maxLength: { value: 10, message: "Max 10 characters" },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>items[0].name error:</b> {form.errors.items?.[0]?.name ?? "(none)"}
         </div>
       </section>
 
@@ -368,7 +349,6 @@ export default function App() {
                     bio: "Hello from Formora",
                     address: { street: "Abovyan" },
                   },
-                  items: [{ name: "VIP" }],
                 },
                 { shouldTouch: true, shouldValidate: true }
               )
@@ -393,7 +373,6 @@ export default function App() {
                     bio: "This bio is definitely going to be longer than fifty characters. Too long!",
                     address: { street: "" },
                   },
-                  items: [{ name: "ThisIsWayTooLong" }],
                 },
                 { shouldTouch: true, shouldValidate: true }
               )

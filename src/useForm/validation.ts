@@ -1,4 +1,5 @@
 import type { Rules } from "./types";
+import { getByPath } from "../utils/getByPath";
 
 function asNumber(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -9,38 +10,6 @@ function asNumber(v: unknown): number | undefined {
     if (Number.isFinite(n)) return n;
   }
   return undefined;
-}
-
-// ---------------------------------------------
-// Nested field (path) helpers
-// Supports: "a.b.c", "a[0].b", "a.0.b", "a['x']", "a[\"x\"]"
-// ---------------------------------------------
-
-type PathKey = string | number;
-
-function toPath(path: string): PathKey[] {
-  const normalized = String(path)
-    .replace(/\[(\d+)\]/g, ".$1")
-    .replace(/\[["']([^"']+)["']\]/g, ".$1")
-    .replace(/^\./, "");
-
-  return normalized
-    .split(".")
-    .filter(Boolean)
-    .map((k) => {
-      const n = Number(k);
-      return Number.isFinite(n) && String(n) === k ? n : k;
-    });
-}
-
-function getByPath<TVal = any>(obj: any, path: string, fallback?: TVal): TVal {
-  const keys = toPath(path);
-  let cur = obj;
-  for (const key of keys) {
-    if (cur == null) return fallback as TVal;
-    cur = cur[key as any];
-  }
-  return (cur === undefined ? (fallback as TVal) : cur) as TVal;
 }
 
 export function getFieldError<T extends Record<string, any>>(

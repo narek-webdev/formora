@@ -1,130 +1,75 @@
 import * as React from "react";
-import type { Errors, Rules, UseFormOptions } from "./types";
+import type {
+  Errors,
+  Rules,
+  UseFormOptions,
+  Touched,
+  Validating,
+} from "./types";
 import { getFieldError } from "./validation";
 import { isLatestAsyncSeq, nextAsyncSeq } from "./async";
 
-// ---------------------------------------------
-// Nested field (path) helpers
-// Supports: "a.b.c", "a[0].b", "a.0.b", "a['x']", "a[\"x\"]"
-// ---------------------------------------------
+import { getByPath } from "../utils/getByPath";
+import { setByPath } from "../utils/setByPath";
 
-type PathKey = string | number;
-
-function toPath(path: string): PathKey[] {
-  const normalized = String(path)
-    .replace(/\[(\d+)\]/g, ".$1")
-    .replace(/\[["']([^"']+)["']\]/g, ".$1")
-    .replace(/^\./, "");
-
-  return normalized
-    .split(".")
-    .filter(Boolean)
-    .map((k) => {
-      const n = Number(k);
-      return Number.isFinite(n) && String(n) === k ? n : k;
-    });
-}
-
-function getByPath<TVal = any>(obj: any, path: string, fallback?: TVal): TVal {
-  const keys = toPath(path);
-  let cur = obj;
-  for (const key of keys) {
-    if (cur == null) return fallback as TVal;
-    cur = cur[key as any];
-  }
-  return (cur === undefined ? (fallback as TVal) : cur) as TVal;
-}
-
-function isPlainObject(v: any) {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-
-function setByPath(obj: any, path: string, value: any): any {
-  const keys = toPath(path);
-  if (keys.length === 0) return obj;
-
-  const root = Array.isArray(obj)
-    ? obj.slice()
-    : isPlainObject(obj)
-    ? { ...obj }
-    : {};
-
-  let cur: any = root;
-
-  for (let i = 0; i < keys.length; i++) {
-    const key = keys[i];
-    const isLast = i === keys.length - 1;
-
-    if (isLast) {
-      cur[key as any] = value;
-      break;
-    }
-
-    const nextKey = keys[i + 1];
-    const existing = cur[key as any];
-    const shouldBeArray = typeof nextKey === "number";
-
-    let nextContainer: any;
-    if (existing == null) {
-      nextContainer = shouldBeArray ? [] : {};
-    } else {
-      nextContainer = Array.isArray(existing)
-        ? existing.slice()
-        : isPlainObject(existing)
-        ? { ...existing }
-        : shouldBeArray
-        ? []
-        : {};
-    }
-
-    cur[key as any] = nextContainer;
-    cur = nextContainer;
-  }
-
-  return root;
-}
+// v0.5 — Nested fields (objects only)
+// Supports dot paths like "user.email". Arrays are intentionally NOT supported in v0.5.
 
 function unsetByPath(obj: any, path: string): any {
-  const keys = toPath(path);
-  if (keys.length === 0) return obj;
-
-  const root = Array.isArray(obj)
-    ? obj.slice()
-    : isPlainObject(obj)
-    ? { ...obj }
-    : {};
-
-  let cur: any = root;
-
-  for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i];
-    const existing = cur[key as any];
-    if (existing == null) return root;
-
-    const cloned = Array.isArray(existing)
-      ? existing.slice()
-      : isPlainObject(existing)
-      ? { ...existing }
-      : existing;
-
-    cur[key as any] = cloned;
-    cur = cloned;
+  if (!obj || typeof path !== "string" || path.length === 0) return obj;
+  if (path.indexOf(".") === -1) {
+    const next = { ...(obj as any) };
+    delete next[path];
+    return next;
   }
 
-  const lastKey = keys[keys.length - 1];
+  const parts = path.split(".");
+  const root: any = { ...(obj as any) };
+  let current: any = root;
 
-  if (Array.isArray(cur) && typeof lastKey === "number") {
-    cur[lastKey] = undefined; // keep indices stable
-  } else if (isPlainObject(cur)) {
-    delete cur[lastKey as any];
-  } else {
-    cur[lastKey as any] = undefined;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i]!;
+    const existing = current[key];
+    if (
+      existing == null ||
+      typeof existing !== "object" ||
+      Array.isArray(existing)
+    ) {
+      return root;
+    }
+    current[key] = { ...existing };
+    current = current[key];
+  }
+
+  const lastKey = parts[parts.length - 1]!;
+  if (current && typeof current === "object") {
+    delete current[lastKey];
   }
 
   return root;
 }
 
-// Proxy object so legacy validators that do `values[name]` still work when `name` is a path.
+function hasAnyLeafError(obj: any): boolean {
+  if (!obj) return false;
+  if (typeof obj === "string") return obj.length > 0;
+  if (typeof obj !== "object") return false;
+  for (const k of Object.keys(obj)) {
+    if (hasAnyLeafError(obj[k])) return true;
+  }
+  return false;
+}
+
+function hasAnyTrue(obj: any): boolean {
+  if (!obj) return false;
+  if (obj === true) return true;
+  if (typeof obj !== "object") return false;
+  for (const k of Object.keys(obj)) {
+    if (hasAnyTrue(obj[k])) return true;
+  }
+  return false;
+}
+
+// Proxy object so validators that do `values[name]` still work when `name` is a path.
 function asPathReadableObject<TObj extends Record<string, any>>(
   values: TObj
 ): TObj {
@@ -149,9 +94,9 @@ export function useForm<T extends Record<string, any>>(
     valuesRef.current = values;
   }, [values]);
   const [errors, setErrors] = React.useState<any>({});
-  const [touched, setTouched] = React.useState<Record<string, boolean>>({});
-  const [validating, setValidating] = React.useState<Record<string, boolean>>(
-    {}
+  const [touched, setTouched] = React.useState<Touched<T>>({} as Touched<T>);
+  const [validating, setValidating] = React.useState<Validating<T>>(
+    {} as Validating<T>
   );
   const [submitCount, setSubmitCount] = React.useState(0);
 
@@ -192,11 +137,10 @@ export function useForm<T extends Record<string, any>>(
 
   function setFieldValidating(name: string, isValidating: boolean) {
     if (!isMountedRef.current) return;
-    setValidating((prev) => {
-      const next: Record<string, boolean> = { ...prev };
-      if (isValidating) next[name] = true;
-      else delete next[name];
-      return next;
+    setValidating((prev: any) => {
+      return isValidating
+        ? setByPath(prev, name, true)
+        : unsetByPath(prev, name);
     });
   }
 
@@ -395,9 +339,10 @@ export function useForm<T extends Record<string, any>>(
   }
 
   function touchAllRegisteredFields() {
-    setTouched((prev) => {
-      const next: Record<string, boolean> = { ...prev };
-      for (const key of rulesRef.current.keys()) next[key] = true;
+    setTouched((prev: any) => {
+      let next: any = prev;
+      for (const key of rulesRef.current.keys())
+        next = setByPath(next, key, true);
       return next;
     });
   }
@@ -411,7 +356,7 @@ export function useForm<T extends Record<string, any>>(
     const { shouldValidate, shouldTouch } = opts;
 
     if (shouldTouch) {
-      setTouched((prev) => ({ ...prev, [name]: true }));
+      setTouched((prev: any) => setByPath(prev, name, true));
     }
 
     setValues((prev) => {
@@ -474,11 +419,8 @@ export function useForm<T extends Record<string, any>>(
   }
 
   function setTouchedField(name: string, isTouched: boolean) {
-    setTouched((prev) => {
-      const next: Record<string, boolean> = { ...prev };
-      if (isTouched) next[name] = true;
-      else delete next[name];
-      return next;
+    setTouched((prev: any) => {
+      return isTouched ? setByPath(prev, name, true) : unsetByPath(prev, name);
     });
   }
 
@@ -512,16 +454,8 @@ export function useForm<T extends Record<string, any>>(
 
     // clear field error/touched/validating
     setErrors((prev: any) => unsetByPath(prev, name));
-    setTouched((prev) => {
-      const next = { ...prev };
-      delete (next as any)[name];
-      return next;
-    });
-    setValidating((prev) => {
-      const next = { ...prev };
-      delete (next as any)[name];
-      return next;
-    });
+    setTouched((prev: any) => unsetByPath(prev, name));
+    setValidating((prev: any) => unsetByPath(prev, name));
 
     // reset async seq for the field (optional)
     asyncSeqRef.current.delete(name);
@@ -582,7 +516,7 @@ export function useForm<T extends Record<string, any>>(
         });
       },
       onBlur: () => {
-        setTouched((prev) => ({ ...prev, [name]: true }));
+        setTouched((prev: any) => setByPath(prev, name, true));
 
         if (validateOn === "blur") {
           setValues((prev) => {
@@ -595,11 +529,8 @@ export function useForm<T extends Record<string, any>>(
     };
   }
 
-  const isValid =
-    errors && typeof errors === "object"
-      ? Object.keys(errors).length === 0
-      : true;
-  const isValidating = Object.values(validating).some(Boolean);
+  const isValid = !hasAnyLeafError(errors);
+  const isValidating = hasAnyTrue(validating);
 
   return {
     values,

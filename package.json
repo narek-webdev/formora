@@ -1,6 +1,6 @@
 {
   "name": "formora",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Type-safe, headless form state and validation for React",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
