@@ -12,6 +12,7 @@ export default function App() {
         email: "",
         username: "",
         password: "",
+        confirmPassword: "",
         age: 0,
       },
       profile: {
@@ -31,7 +32,7 @@ export default function App() {
   });
 
   // v0.2: async validation (slow on purpose)
-  const validateEmailAsync = async (value: unknown) => {
+  const validateEmailAsync = async (value: unknown, _values: unknown) => {
     const v = String(value ?? "");
     if (!v) return undefined;
 
@@ -205,9 +206,55 @@ export default function App() {
         </div>
       </section>
 
+      {/* CONFIRM PASSWORD (v0.4 cross-field validate) */}
+      <section style={{ marginTop: 22 }}>
+        <h2 style={{ margin: "12px 0 8px" }}>
+          4) Confirm Password — cross-field validate() (v0.4)
+        </h2>
+
+        <label style={{ display: "block" }}>
+          Confirm password
+          <input
+            type="password"
+            style={{ width: "100%", padding: 10, marginTop: 6 }}
+            placeholder="Must match password"
+            {...form.register("user.confirmPassword", {
+              required: "Confirm password is required",
+              validate: (value, values) => {
+                const v = String(value ?? "");
+                if (!v) return undefined;
+                const pass = String(values.user?.password ?? "");
+                return v !== pass ? "Passwords do not match" : undefined;
+              },
+            })}
+          />
+        </label>
+
+        <div style={{ marginTop: 8 }}>
+          <b>confirmPassword error:</b>{" "}
+          {form.errors.user?.confirmPassword ?? "(none)"}
+        </div>
+
+        <details style={{ marginTop: 8 }}>
+          <summary>How to verify cross-field behavior</summary>
+          <ul>
+            <li>
+              Type a password, then type a different confirm password — you
+              should see “Passwords do not match”.
+            </li>
+            <li>Fix confirm password to match — the error should clear.</li>
+            <li>
+              Switch <code>validateOn</code> to <b>submit</b> and try submitting
+              without touching confirm password — submit should still validate
+              it.
+            </li>
+          </ul>
+        </details>
+      </section>
+
       {/* AGE (min/max numbers) */}
       <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>4) Age — number min/max</h2>
+        <h2 style={{ margin: "12px 0 8px" }}>5) Age — number min/max</h2>
 
         <label style={{ display: "block" }}>
           Age
@@ -228,7 +275,7 @@ export default function App() {
 
       {/* BIO (maxLength) */}
       <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>5) Bio — maxLength</h2>
+        <h2 style={{ margin: "12px 0 8px" }}>6) Bio — maxLength</h2>
 
         <label style={{ display: "block" }}>
           Bio
@@ -249,7 +296,7 @@ export default function App() {
       {/* NESTED OBJECT + ARRAY */}
       <section style={{ marginTop: 22 }}>
         <h2 style={{ margin: "12px 0 8px" }}>
-          6) Nested paths — profile.address.street + items.0.name
+          7) Nested paths — profile.address.street + items.0.name
         </h2>
 
         <label style={{ display: "block" }}>
@@ -314,6 +361,7 @@ export default function App() {
                     email: "john@example.com",
                     username: "john_25",
                     password: "S3cretPass!",
+                    confirmPassword: "S3cretPass!",
                     age: 25,
                   },
                   profile: {
@@ -338,6 +386,7 @@ export default function App() {
                     email: "bad",
                     username: "??",
                     password: "password",
+                    confirmPassword: "nope",
                     age: 10,
                   },
                   profile: {
