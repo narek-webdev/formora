@@ -1,0 +1,148 @@
+---
+sidebar_position: 1
+---
+
+# Nested Fields
+
+Real-world forms are rarely flat. They contain objects, groups, and nested data structures.
+
+Formora supports **nested fields out of the box** by treating field names as **paths**.
+
+---
+
+## Field names as paths
+
+In Formora, a field name is a path into your values object.
+
+Examples:
+
+```ts
+email
+profile.name
+profile.address.street
+items.0.name
+```
+
+There is no separate API for nested fields — the same `register` call works everywhere.
+
+---
+
+## Basic nested object example
+
+```tsx
+const form = useForm({
+  initialValues: {
+    profile: {
+      name: "",
+      address: {
+        street: "",
+        city: "",
+      },
+    },
+  },
+  validateOn: "blur",
+});
+```
+
+Register nested fields using dot notation:
+
+```tsx
+<input {...form.register('profile.name')} />
+<input {...form.register('profile.address.street')} />
+<input {...form.register('profile.address.city')} />
+```
+
+Formora automatically reads and writes values at the correct depth.
+
+---
+
+## Validation for nested fields
+
+Validation works exactly the same as for flat fields.
+
+```tsx
+<input
+  {...form.register("profile.address.street", {
+    validate: (value) => (!value ? "Street is required" : undefined),
+  })}
+/>
+```
+
+Errors are stored at the same nested path:
+
+```ts
+{
+  profile: {
+    address: {
+      street: "Street is required";
+    }
+  }
+}
+```
+
+---
+
+## Error visibility
+
+Use the same visibility rules for nested fields:
+
+```tsx
+{
+  form.shouldShowError("profile.address.street") && (
+    <p>{form.errors.profile?.address?.street}</p>
+  );
+}
+```
+
+Or use `getFieldMeta` for a safer access pattern.
+
+---
+
+## Nested objects with arrays
+
+Nested paths can include arrays at any level:
+
+```ts
+users.0.profile.email
+orders.2.items.1.name
+```
+
+This works seamlessly with **field array helpers**.
+
+---
+
+## Resetting nested fields
+
+You can reset:
+
+- the entire form
+- a nested subtree
+- a single nested field
+
+```ts
+form.resetField("profile.address");
+form.resetField("profile.address.street");
+```
+
+Formora restores values from `initialValues` and clears meta state accordingly.
+
+---
+
+## Common mistakes to avoid
+
+:::warning
+Avoid mixing flat and nested state management.
+
+Always access values and errors through paths or helpers, not ad-hoc state.
+:::
+
+---
+
+## Summary
+
+- Nested fields are handled via path-based names
+- The same APIs work at any depth
+- Validation and meta state follow the same paths
+- Arrays and objects compose naturally
+
+Formora lets you model your form data exactly as your backend expects it.

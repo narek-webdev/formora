@@ -1,0 +1,163 @@
+---
+sidebar_position: 4
+---
+
+# Reset API
+
+Formora provides explicit APIs to reset form state in a predictable way.
+
+There are two related methods:
+
+- `reset(options?)`
+- `resetField(name, options?)`
+
+These APIs affect **values** and **meta state** together.
+
+---
+
+## `reset(options?)`
+
+Resets the entire form back to its initial state.
+
+### Signature
+
+```ts
+reset(options?: ResetOptions): void
+```
+
+### Default behavior
+
+Calling `reset()` with no options:
+
+- restores `values` from `initialValues`
+- clears `errors`
+- clears `touched`
+- clears `dirty`
+- clears `validating`
+- resets `submitCount`
+
+This is equivalent to recreating the form from scratch.
+
+---
+
+### Reset options
+
+Depending on your configuration, `ResetOptions` may include:
+
+```ts
+interface ResetOptions {
+  keepErrors?: boolean;
+  keepTouched?: boolean;
+  keepDirty?: boolean;
+  keepValidating?: boolean;
+}
+```
+
+These options allow selective preservation of meta state while resetting values.
+
+:::info
+Use keep options sparingly. Preserving meta state after a reset can be confusing for users.
+:::
+
+---
+
+## `resetField(name, options?)`
+
+Resets a single field or nested subtree.
+
+### Signature
+
+```ts
+resetField(name: string, options?: ResetFieldOptions): void
+```
+
+Because field names are paths, `name` can refer to:
+
+- a single field (`email`)
+- a nested field (`profile.address.street`)
+- a subtree (`profile.address`)
+
+---
+
+### Default behavior
+
+Calling `resetField(name)` with no options:
+
+- restores the field value from `initialValues`
+- clears the field error
+- clears `touched` for that field
+- clears `dirty` for that field
+- clears `validating` for that field
+
+---
+
+### Reset field options
+
+```ts
+interface ResetFieldOptions {
+  keepError?: boolean;
+  keepTouched?: boolean;
+  keepDirty?: boolean;
+  keepValidating?: boolean;
+}
+```
+
+These options apply **only to the specified field path**.
+
+---
+
+## Async validation interaction
+
+When a reset occurs:
+
+- in-flight async validations are invalidated
+- stale async results are ignored
+- `validating` flags are cleared (unless preserved explicitly)
+
+This prevents late async errors from reappearing after a reset.
+
+---
+
+## Examples
+
+### Reset the entire form
+
+```ts
+form.reset();
+```
+
+### Reset but keep errors
+
+```ts
+form.reset({ keepErrors: true });
+```
+
+### Reset one nested field
+
+```ts
+form.resetField("profile.address.street");
+```
+
+### Reset one array item
+
+```ts
+form.resetField(`items.${index}`);
+```
+
+---
+
+## Guarantees
+
+- Reset operations are synchronous
+- Values and meta state remain consistent
+- Nested paths and arrays are handled correctly
+- Async validation cannot leak stale results
+
+---
+
+## Summary
+
+- `reset` restores the entire form
+- `resetField` restores a single path or subtree
+- keep options allow selective preservation of meta state
+- async validation is safely invalidated

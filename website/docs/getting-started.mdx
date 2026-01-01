@@ -1,0 +1,131 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# Getting Started
+
+This guide walks you through installing Formora and building your first form with **clear validation rules** and **predictable UX**.
+
+---
+
+## Installation
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm" default>
+
+```bash
+npm install formora
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add formora
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add formora
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Your first form
+
+Below is a minimal but complete example using **submit-based validation**.
+
+```tsx
+import { useForm } from "formora";
+
+function LoginForm() {
+  const form = useForm({
+    initialValues: {
+      email: "",
+      password: "",
+    },
+    validateOn: "submit",
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit((values) => console.log(values))}>
+      <div>
+        <label>Email</label>
+        <input
+          {...form.register("email", {
+            validate: (value) => (!value ? "Email is required" : undefined),
+          })}
+        />
+        {form.shouldShowError("email") && <p>{form.errors.email}</p>}
+      </div>
+
+      <div>
+        <label>Password</label>
+        <input
+          type="password"
+          {...form.register("password", {
+            validate: (value) =>
+              value.length < 6 ? "Minimum 6 characters" : undefined,
+          })}
+        />
+        {form.shouldShowError("password") && <p>{form.errors.password}</p>}
+      </div>
+
+      <button type="submit">Sign in</button>
+    </form>
+  );
+}
+```
+
+---
+
+## How validation works here
+
+:::info
+Validation runs **only when the form is submitted** because `validateOn` is set to `submit`.
+:::
+
+- No errors are shown while typing
+- Errors appear only after the first submit
+- Error visibility is controlled by `shouldShowError`
+
+This makes validation behavior **explicit and predictable**.
+
+---
+
+## Changing validation behavior
+
+Formora supports three validation modes:
+
+- `submit` – validate on submit only
+- `change` – validate on every change
+- `blur` – validate when a field loses focus
+
+You can switch modes by changing one option:
+
+```ts
+const form = useForm({
+  validateOn: "blur",
+});
+```
+
+Each mode is explained in detail in the **Validation Modes** section.
+
+---
+
+## What’s next
+
+- 👉 **[Validation Modes](./concepts/validate-on)** – submit / change / blur explained
+- 👉 **[Nested Fields](./guides/nested-fields)** – paths like `user.email`
+- 👉 **[Field Arrays](./guides/field-arrays)** – dynamic lists done right
+- 👉 **[API Reference](./api/useform)** – full Formora API
+
+Formora scales from simple forms to complex, dynamic UIs without changing how you think about validation.

@@ -1,0 +1,146 @@
+---
+sidebar_position: 3
+---
+
+# Resetting Forms
+
+Resetting is not just about values — it also affects errors and meta state.
+
+Formora provides two reset APIs:
+
+- `reset(options?)` – reset the entire form
+- `resetField(name, options?)` – reset one field (or a nested subtree)
+
+Both APIs restore values from `initialValues` and can optionally preserve parts of state.
+
+---
+
+## `reset()`
+
+`reset()` restores the entire form back to `initialValues`.
+
+```ts
+form.reset();
+```
+
+### What `reset()` does by default
+
+By default, `reset()`:
+
+- resets `values` to `initialValues`
+- clears `errors`
+- clears `touched`
+- clears `dirty`
+- clears `validating`
+- resets `submitCount`
+
+This returns the form to a fresh state.
+
+---
+
+## `resetField(name)`
+
+`resetField` resets a single field path.
+
+```ts
+form.resetField("email");
+```
+
+Because field names are paths, you can reset nested parts too:
+
+```ts
+form.resetField("profile");
+form.resetField("profile.address.street");
+```
+
+### What `resetField()` does by default
+
+By default, `resetField(name)`:
+
+- resets the field value back to the initial value
+- clears the field error
+- clears `touched` for that field
+- clears `dirty` for that field
+- clears `validating` for that field
+
+---
+
+## Keep options
+
+Sometimes you want to reset values but keep certain UI state.
+
+Formora supports keep options (exact names depend on your API), but the concept is:
+
+- keep errors
+- keep touched
+- keep dirty
+- keep validating
+
+### Example: reset but keep errors
+
+```ts
+form.reset({ keepErrors: true });
+```
+
+### Example: reset a field but keep touched
+
+```ts
+form.resetField("email", { keepTouched: true });
+```
+
+:::info
+Use keep options sparingly. Resetting should usually return the form to a clean state.
+:::
+
+---
+
+## Recommended UI patterns
+
+### Clear a form after successful submit
+
+```tsx
+<form
+  onSubmit={form.handleSubmit(async (values) => {
+    await save(values);
+    form.reset();
+  })}
+>
+  ...
+</form>
+```
+
+### “Reset” button
+
+```tsx
+<button type="button" onClick={() => form.reset()}>
+  Reset
+</button>
+```
+
+### Reset one row in an array
+
+```ts
+form.resetField(`items.${index}`);
+```
+
+This restores the item to its original value (from `initialValues`).
+
+---
+
+## Notes for async validation
+
+If a field is currently validating asynchronously, reset:
+
+- clears its validating state
+- invalidates in-flight async work
+
+This prevents late async results from reintroducing errors after reset.
+
+---
+
+## Summary
+
+- `reset()` restores the full form to `initialValues`
+- `resetField(name)` resets a field or nested subtree
+- keep options allow preserving selected state
+- reset invalidates async work to prevent stale results
