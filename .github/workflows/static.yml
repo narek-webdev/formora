@@ -1,10 +1,11 @@
-name: Deploy Docs (GitHub Pages)
+name: Deploy Docusaurus to GitHub Pages
 
 on:
   push:
     branches: [main]
     paths:
       - "website/**"
+      - ".github/workflows/static.yml"
 
 permissions:
   contents: read
@@ -19,9 +20,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -35,7 +38,7 @@ jobs:
         working-directory: website
         run: npm run build
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/build
@@ -45,7 +48,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
