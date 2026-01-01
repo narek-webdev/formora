@@ -104,6 +104,7 @@ type DeepMap<T, V> = T extends Primitive
 export type Errors<T> = DeepMap<T, string>;
 export type Touched<T> = DeepMap<T, boolean>;
 export type Validating<T> = DeepMap<T, boolean>;
+export type Dirty<T> = DeepMap<T, boolean>;
 
 export type Rules<T> = {
   required?: boolean | string; // true or custom message
@@ -132,16 +133,49 @@ export type SetValuesOptions = {
   bypassDebounce?: boolean;
 };
 
+export type ResetOptions = {
+  keepErrors?: boolean;
+  keepTouched?: boolean;
+  keepDirty?: boolean;
+  keepValidating?: boolean;
+};
+
+export type ResetFieldOptions = {
+  keepError?: boolean;
+  keepTouched?: boolean;
+  keepDirty?: boolean;
+  keepValidating?: boolean;
+};
+
 export type UseFormReturn<T> = {
   values: T;
   errors: Errors<T>;
   touched: Touched<T>;
+  dirty: Dirty<T>;
   validating: Validating<T>;
 
   isValid: boolean;
+  isDirty: boolean;
   isValidating: boolean;
   submitCount: number;
   hasSubmitted: boolean;
+
+  shouldShowError: (name: FieldPath<T>) => boolean;
+  getFieldMeta: (name: FieldPath<T>) => {
+    isTouched: boolean;
+    isDirty: boolean;
+    isValidating: boolean;
+    error: any;
+    showError: boolean;
+  };
+
+  formState: {
+    isValid: boolean;
+    isDirty: boolean;
+    isValidating: boolean;
+    submitCount: number;
+    hasSubmitted: boolean;
+  };
 
   // Register returns input props (kept as `any` to stay compatible with different input types)
   register: {
@@ -165,10 +199,10 @@ export type UseFormReturn<T> = {
     (name: string, value: any, opts?: SetValueOptions): void;
   };
   setValues: (partial: Partial<T>, opts?: SetValuesOptions) => void;
-  reset: () => void;
+  reset: (opts?: ResetOptions) => void;
   resetField: {
-    <P extends Path<T>>(name: P): void;
-    (name: string): void;
+    <P extends Path<T>>(name: P, opts?: ResetFieldOptions): void;
+    (name: string, opts?: ResetFieldOptions): void;
   };
 
   // Field array helpers (v0.6)
@@ -189,6 +223,29 @@ export type UseFormReturn<T> = {
     ): void;
     (name: string, index: number, opts?: SetValueOptions): void;
   };
+
+  insert: {
+    <P extends FieldArrayPath<T>>(
+      name: P,
+      index: number,
+      value: ArrayElement<PathValue<T, P>>,
+      opts?: SetValueOptions
+    ): void;
+    (name: string, index: number, value: any, opts?: SetValueOptions): void;
+  };
+
+  replace: {
+    <P extends FieldArrayPath<T>>(
+      name: P,
+      index: number,
+      value: ArrayElement<PathValue<T, P>>,
+      opts?: SetValueOptions
+    ): void;
+    (name: string, index: number, value: any, opts?: SetValueOptions): void;
+  };
+
+  move: (name: FieldPath<T>, fromIndex: number, toIndex: number) => void;
+  swap: (name: FieldPath<T>, indexA: number, indexB: number) => void;
 
   // Error helpers
   setError: {

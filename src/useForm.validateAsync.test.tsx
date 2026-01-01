@@ -24,6 +24,7 @@ function deferred<T>(): Deferred<T> {
 function AsyncFieldForm(props: {
   validateOn: "blur" | "change";
   getDeferred: (value: string) => Deferred<string | undefined>;
+  syncValidate?: (value: unknown, values: any) => string | undefined;
 }) {
   const form = useForm({
     initialValues: { email: "" },
@@ -35,6 +36,7 @@ function AsyncFieldForm(props: {
       <input
         aria-label="email"
         {...form.register("email", {
+          validate: props.syncValidate,
           validateAsync: (value) => {
             const v = String(value ?? "");
             return props.getDeferred(v).promise;
@@ -72,6 +74,47 @@ describe("useForm - validateAsync", () => {
     await waitFor(() =>
       expect(screen.getByTestId("validating")).toHaveTextContent("no")
     );
+  });
+
+  it("does not run async validation when sync validation fails (sync-first short-circuit)", async () => {
+    const user = userEvent.setup();
+    let asyncCalls = 0;
+
+    const d = deferred<string | undefined>();
+
+    render(
+      <AsyncFieldForm
+        validateOn="change"
+        getDeferred={(v) => {
+          asyncCalls++;
+          return d;
+        }}
+        syncValidate={(value) => {
+          const v = String(value ?? "");
+          return v.trim().length > 0 ? undefined : "Required";
+        }}
+      />
+    );
+
+    const input = screen.getByLabelText("email");
+
+    // First make a real change so onChange pipeline is active
+    await user.type(input, "a");
+
+    // Reset counter so we only measure calls from the failing change below
+    asyncCalls = 0;
+
+    // Now change back to empty -> sync should fail and async must NOT run
+    await user.keyboard("{Backspace}");
+
+    // Sync error should be set
+    await waitFor(() =>
+      expect(screen.getByTestId("error")).toHaveTextContent("Required")
+    );
+
+    // Async must not be called for the failing change, and validating must be off
+    expect(asyncCalls).toBe(0);
+    expect(screen.getByTestId("validating")).toHaveTextContent("no");
   });
 
   it("is race-safe: older async results cannot override newer ones", async () => {

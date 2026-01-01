@@ -356,6 +356,19 @@ return (
 - `remove(name, index)` removes an item and **shifts** the array branch in `errors`, `touched`, and `validating`.
 - On submit, **all registered fields** (including array fields) are validated.
 
+### Async validation & field arrays
+
+When removing an array item (e.g. `remove("items", index)`), Formora automatically **cancels and invalidates** any pending async validations for fields at or after the removed index.
+
+This prevents stale async results (from old indices) from attaching to shifted items after removal.
+
+**Example scenario:**
+
+- User types in `items.2.email` → async validation starts
+- User removes `items.1`
+- `items.2.email` becomes `items.1.email`
+- Formora cancels the old async validation so it cannot overwrite the new field state
+
 ---
 
 ## 🧰 DX Helpers (v0.3)
@@ -394,6 +407,26 @@ This will:
 - clear `errors`, `touched`, and `validating`
 - cancel any pending async validation
 
+#### Reset options
+
+You can control which parts of the form state are preserved during reset:
+
+```ts
+form.reset({
+  keepErrors: true,
+  keepTouched: true,
+  keepDirty: true,
+  keepValidating: true,
+});
+```
+
+- `keepErrors` — preserve validation errors
+- `keepTouched` — preserve touched state
+- `keepDirty` — preserve dirty state
+- `keepValidating` — preserve async validating state (otherwise pending async is cancelled)
+
+> ℹ️ By default, `reset()` clears **all meta state** and cancels pending async validation.
+
 ---
 
 ### `resetField(name)`
@@ -409,6 +442,24 @@ This will:
 - restore the field’s initial value
 - clear its error, touched, and validating state
 - cancel pending async validation for that field
+
+#### ResetField options
+
+```ts
+form.resetField("email", {
+  keepError: true,
+  keepTouched: true,
+  keepDirty: true,
+  keepValidating: true,
+});
+```
+
+- `keepError` — preserve the field error
+- `keepTouched` — preserve touched state for this field
+- `keepDirty` — preserve dirty state for this field
+- `keepValidating` — preserve async validating state for this field
+
+When async validation is not preserved, any pending async validation for this field is **cancelled and invalidated**.
 
 ---
 

@@ -1,556 +1,825 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { useForm } from "../../src";
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+// --- Small UI helpers (no external deps) ------------------------------------
+
+function Section(props: {
+  title: string;
+  children: React.ReactNode;
+  note?: React.ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        background: "#fff",
+      }}
+    >
+      <h2 style={{ margin: 0, marginBottom: 8, fontSize: 18 }}>
+        {props.title}
+      </h2>
+      {props.note ? (
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 10,
+            background: "#f8fafc",
+            border: "1px solid #eef2f7",
+            color: "#334155",
+            marginBottom: 12,
+            lineHeight: 1.35,
+          }}
+        >
+          {props.note}
+        </div>
+      ) : null}
+      {props.children}
+    </section>
+  );
+}
+
+function FieldRow(props: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr auto",
+        gap: 12,
+        alignItems: "start",
+        padding: "10px 0",
+        borderTop: "1px dashed #e5e7eb",
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{props.label}</div>
+        {props.description ? (
+          <div style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
+            {props.description}
+          </div>
+        ) : null}
+        {props.children}
+      </div>
+      {props.right ? <div>{props.right}</div> : <div />}
+    </div>
+  );
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: 10,
+        border: "1px solid #cbd5e1",
+        outline: "none",
+        fontSize: 14,
+        ...(props.style || {}),
+      }}
+    />
+  );
+}
+
+function Btn(
+  props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    tone?: "primary" | "neutral";
+  }
+) {
+  const tone = props.tone ?? "neutral";
+  return (
+    <button
+      {...props}
+      style={{
+        padding: "8px 10px",
+        borderRadius: 10,
+        border: tone === "primary" ? "1px solid #0ea5e9" : "1px solid #cbd5e1",
+        background: tone === "primary" ? "#0ea5e9" : "#ffffff",
+        color: tone === "primary" ? "#fff" : "#0f172a",
+        cursor: "pointer",
+        fontSize: 13,
+        fontWeight: 600,
+        ...(props.style || {}),
+      }}
+    />
+  );
+}
+
+function Pill(props: {
+  children: React.ReactNode;
+  tone?: "good" | "warn" | "info";
+}) {
+  const tone = props.tone ?? "info";
+  const map = {
+    good: { bg: "#ecfdf5", bd: "#a7f3d0", fg: "#065f46" },
+    warn: { bg: "#fff7ed", bd: "#fed7aa", fg: "#9a3412" },
+    info: { bg: "#eff6ff", bd: "#bfdbfe", fg: "#1e40af" },
+  }[tone];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 8px",
+        borderRadius: 999,
+        border: `1px solid ${map.bd}`,
+        background: map.bg,
+        color: map.fg,
+        fontSize: 12,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {props.children}
+    </span>
+  );
+}
+
+function MetaLine(props: {
+  showError: boolean;
+  error?: string;
+  touched?: boolean;
+  dirty?: boolean;
+  validating?: boolean;
+  modeLabel: string;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}
+    >
+      <Pill tone={props.showError ? "warn" : "good"}>
+        {props.showError ? "Error shown" : "No visible error"}
+      </Pill>
+      <Pill tone={props.touched ? "info" : "good"}>
+        touched: {String(!!props.touched)}
+      </Pill>
+      <Pill tone={props.dirty ? "info" : "good"}>
+        dirty: {String(!!props.dirty)}
+      </Pill>
+      <Pill tone={props.validating ? "warn" : "good"}>
+        validating: {String(!!props.validating)}
+      </Pill>
+      <Pill tone="info">mode: {props.modeLabel}</Pill>
+      {props.showError ? (
+        <div style={{ color: "#b45309", fontWeight: 700 }}>• {props.error}</div>
+      ) : null}
+    </div>
+  );
+}
+
+// --- Demo types --------------------------------------------------------------
+
+type DemoValues = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  profile: {
+    address: {
+      street: string;
+    };
+  };
+  items: { name: string; qty: number }[];
+};
+
+const initial: DemoValues = {
+  email: "",
+  password: "",
+  confirmPassword: "",
+  profile: { address: { street: "" } },
+  items: [{ name: "Coffee", qty: 1 }],
+};
+
+// Fake async check. Treat "taken@formora.dev" as already used.
+function fakeEmailCheck(email: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const ms = 450;
+    setTimeout(() => {
+      if (!email) return resolve(undefined);
+      const normalized = email.trim().toLowerCase();
+      if (normalized === "taken@formora.dev")
+        return resolve("Email is already taken");
+      if (normalized.endsWith("@example.com"))
+        return resolve("Please use a real email domain");
+      return resolve(undefined);
+    }, ms);
+  });
+}
+
+function DemoForm(props: {
+  mode: "submit" | "change" | "blur";
+  title: string;
+  explanation: React.ReactNode;
+}) {
+  const [submitMsg, setSubmitMsg] = useState<string>("");
+
+  const form = useForm<DemoValues>({
+    initialValues: initial,
+    validateOn: props.mode,
+  });
+
+  // Register rules (sync + async)
+  const emailReg = form.register("email", {
+    validate: (v) => {
+      const s = String(v ?? "").trim();
+      if (!s) return "Email is required";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s))
+        return "Email must look like name@domain.com";
+      return undefined;
+    },
+    validateAsync: async (v) => {
+      const s = String(v ?? "").trim();
+      return fakeEmailCheck(s);
+    },
+  });
+
+  const passReg = form.register("password", {
+    validate: (v) => {
+      const s = String(v ?? "");
+      if (!s) return "Password is required";
+      if (s.length < 6) return "Password must be at least 6 characters";
+      return undefined;
+    },
+  });
+
+  const confirmReg = form.register("confirmPassword", {
+    validate: (v: unknown, values: DemoValues) => {
+      const s = String(v ?? "");
+      if (!s) return "Please confirm password";
+      if (s !== values.password) return "Passwords do not match";
+      return undefined;
+    },
+  });
+
+  const streetReg = form.register("profile.address.street", {
+    validate: (v) => {
+      const s = String(v ?? "").trim();
+      if (!s) return "Street is required";
+      if (s.length < 3) return "Street must be at least 3 characters";
+      return undefined;
+    },
+  });
+
+  // A helper to render array row meta + input
+  function ItemRow({ index }: { index: number }) {
+    const namePath = `items.${index}.name` as const;
+    const qtyPath = `items.${index}.qty` as const;
+
+    const nameMeta = form.getFieldMeta(namePath);
+    const qtyMeta = form.getFieldMeta(qtyPath);
+
+    return (
+      <div
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: 12,
+          marginTop: 10,
+          background: "#fcfcfd",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ fontWeight: 800 }}>Item #{index}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Btn type="button" onClick={() => form.remove("items", index)}>
+              remove
+            </Btn>
+            <Btn
+              type="button"
+              onClick={() => form.insert("items", index, { name: "", qty: 1 })}
+            >
+              insert here
+            </Btn>
+            <Btn
+              type="button"
+              onClick={() =>
+                form.replace("items", index, {
+                  name: "Replaced",
+                  qty: 2,
+                })
+              }
+            >
+              replace
+            </Btn>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 140px",
+            gap: 12,
+            marginTop: 10,
+          }}
+        >
+          <div>
+            <Input
+              placeholder="Item name (required, min 2 chars)"
+              {...form.register(namePath, {
+                validate: (v) => {
+                  const s = String(v ?? "").trim();
+                  if (!s) return "Item name is required";
+                  if (s.length < 2)
+                    return "Item name must be at least 2 characters";
+                  return undefined;
+                },
+              })}
+            />
+            <MetaLine
+              modeLabel={props.mode}
+              showError={!!nameMeta.showError}
+              error={nameMeta.error}
+              touched={nameMeta.isTouched}
+              dirty={nameMeta.isDirty}
+              validating={nameMeta.isValidating}
+            />
+          </div>
+          <div>
+            <Input
+              type="number"
+              min={0}
+              placeholder="qty"
+              {...form.register(qtyPath, {
+                validate: (v) => {
+                  const n = Number(v);
+                  if (!Number.isFinite(n)) return "Quantity must be a number";
+                  if (n <= 0) return "Quantity must be at least 1";
+                  if (n > 10) return "Quantity must be ≤ 10";
+                  return undefined;
+                },
+              })}
+            />
+            <MetaLine
+              modeLabel={props.mode}
+              showError={!!qtyMeta.showError}
+              error={qtyMeta.error}
+              touched={qtyMeta.isTouched}
+              dirty={qtyMeta.isDirty}
+              validating={qtyMeta.isValidating}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}
+        >
+          <Btn
+            type="button"
+            onClick={() => index > 0 && form.move("items", index, index - 1)}
+          >
+            move up
+          </Btn>
+          <Btn
+            type="button"
+            onClick={() =>
+              form.move(
+                "items",
+                index,
+                Math.min(index + 1, (form as any).values.items.length - 1)
+              )
+            }
+          >
+            move down
+          </Btn>
+          <Btn
+            type="button"
+            onClick={() => {
+              const last = (form as any).values.items.length - 1;
+              if (last >= 0) form.swap("items", index, last);
+            }}
+          >
+            swap with last
+          </Btn>
+        </div>
+      </div>
+    );
+  }
+
+  const emailMeta = form.getFieldMeta("email");
+  const passMeta = form.getFieldMeta("password");
+  const confirmMeta = form.getFieldMeta("confirmPassword");
+  const streetMeta = form.getFieldMeta("profile.address.street");
+
+  const isValidatingAny = useMemo(() => {
+    return (
+      !!(form as any).isValidating ||
+      !!emailMeta.isValidating ||
+      !!passMeta.isValidating ||
+      !!confirmMeta.isValidating ||
+      !!streetMeta.isValidating
+    );
+  }, [
+    emailMeta.isValidating,
+    passMeta.isValidating,
+    confirmMeta.isValidating,
+    streetMeta.isValidating,
+  ]);
+
+  const onSubmit = (values: DemoValues) => {
+    setSubmitMsg(
+      `✅ Submitted with ${values.items.length} item(s). Email: ${
+        values.email || "(empty)"
+      }`
+    );
+  };
+
+  return (
+    <Section
+      title={props.title}
+      note={
+        <div>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>
+            What this demo proves
+          </div>
+          <div>{props.explanation}</div>
+          <div
+            style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}
+          >
+            <Pill tone="info">Try: type, blur, submit</Pill>
+            <Pill tone={isValidatingAny ? "warn" : "good"}>
+              async validating: {String(!!isValidatingAny)}
+            </Pill>
+            <Pill tone="info">Async email: try “taken@formora.dev”</Pill>
+          </div>
+        </div>
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSubmitMsg("");
+          const maybeHandleSubmit = (form as any).handleSubmit;
+          if (typeof maybeHandleSubmit === "function") {
+            return maybeHandleSubmit(onSubmit)();
+          }
+          const maybeSubmit = (form as any).submit;
+          if (typeof maybeSubmit === "function") {
+            return maybeSubmit(onSubmit);
+          }
+        }}
+      >
+        {/* Email */}
+        <FieldRow
+          label="Email (sync + async validation)"
+          description={
+            props.mode === "submit"
+              ? "In submit mode, validation happens on submit. Visible errors use meta, not only submit."
+              : props.mode === "change"
+              ? "In change mode, validation runs on each keystroke."
+              : "In blur mode, validation runs when leaving the input."
+          }
+        >
+          <Input
+            aria-label={`${props.mode}-email`}
+            placeholder="name@domain.com"
+            {...emailReg}
+          />
+          <MetaLine
+            modeLabel={props.mode}
+            showError={!!emailMeta.showError}
+            error={emailMeta.error}
+            touched={emailMeta.isTouched}
+            dirty={emailMeta.isDirty}
+            validating={emailMeta.isValidating}
+          />
+          <div style={{ marginTop: 8, color: "#64748b", fontSize: 13 }}>
+            Async rule: <code>taken@formora.dev</code> → “Email is already
+            taken”
+          </div>
+        </FieldRow>
+
+        {/* Password */}
+        <FieldRow
+          label="Password"
+          description="Sync rules: required + min length 6."
+        >
+          <Input
+            type="password"
+            aria-label={`${props.mode}-password`}
+            placeholder="••••••"
+            {...passReg}
+          />
+          <MetaLine
+            modeLabel={props.mode}
+            showError={!!passMeta.showError}
+            error={passMeta.error}
+            touched={passMeta.isTouched}
+            dirty={passMeta.isDirty}
+            validating={passMeta.isValidating}
+          />
+        </FieldRow>
+
+        {/* Confirm password */}
+        <FieldRow
+          label="Confirm password (cross-field validation)"
+          description="Compares confirmPassword to password using (value, values)."
+        >
+          <Input
+            type="password"
+            aria-label={`${props.mode}-confirmPassword`}
+            placeholder="••••••"
+            {...confirmReg}
+          />
+          <MetaLine
+            modeLabel={props.mode}
+            showError={!!confirmMeta.showError}
+            error={confirmMeta.error}
+            touched={confirmMeta.isTouched}
+            dirty={confirmMeta.isDirty}
+            validating={confirmMeta.isValidating}
+          />
+        </FieldRow>
+
+        {/* Nested field */}
+        <FieldRow
+          label="Street (nested object field)"
+          description="Path: profile.address.street (tests deep object support)."
+        >
+          <Input
+            aria-label={`${props.mode}-street`}
+            placeholder="e.g., Komitas 12"
+            {...streetReg}
+          />
+          <MetaLine
+            modeLabel={props.mode}
+            showError={!!streetMeta.showError}
+            error={streetMeta.error}
+            touched={streetMeta.isTouched}
+            dirty={streetMeta.isDirty}
+            validating={streetMeta.isValidating}
+          />
+        </FieldRow>
+
+        {/* Field arrays */}
+        <FieldRow
+          label="Items (field array API)"
+          description="Operations: append/remove/move/swap/insert/replace. Errors/touched/dirty should shift correctly."
+          right={
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <Btn
+                tone="primary"
+                type="button"
+                onClick={() =>
+                  (form as any).append("items", { name: "", qty: 1 })
+                }
+              >
+                append item
+              </Btn>
+              <Btn type="button" onClick={() => (form as any).reset()}>
+                reset form
+              </Btn>
+              <Btn
+                type="button"
+                onClick={() => (form as any).resetField("email")}
+              >
+                resetField(email)
+              </Btn>
+            </div>
+          }
+        >
+          <div style={{ color: "#64748b", fontSize: 13, marginBottom: 6 }}>
+            Tip: create an error on item #0 then move it down — the error should
+            travel with the item.
+          </div>
+
+          {((form as any).values.items || []).map((_: any, i: number) => (
+            <ItemRow key={i} index={i} />
+          ))}
+        </FieldRow>
+
+        <div
+          style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}
+        >
+          <Btn tone="primary" type="submit">
+            submit
+          </Btn>
+          <Btn
+            type="button"
+            onClick={() => {
+              setSubmitMsg("(cleared)");
+              (form as any).setErrors?.({});
+              (form as any).setTouched?.({});
+              (form as any).setDirty?.({});
+            }}
+          >
+            clear meta (values stay)
+          </Btn>
+        </div>
+
+        <div
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 12,
+            border: "1px solid #e5e7eb",
+            background: "#f9fafb",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Messages</div>
+          <div
+            style={{
+              color: submitMsg ? "#065f46" : "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            {submitMsg ||
+              "No submit message yet. (Errors are displayed using field meta — not only on submit.)"}
+          </div>
+        </div>
+
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 800 }}>
+            Debug snapshot (values/errors/meta)
+          </summary>
+          <pre
+            style={{
+              marginTop: 10,
+              padding: 12,
+              borderRadius: 12,
+              background: "#0b1220",
+              color: "#e2e8f0",
+              overflow: "auto",
+              fontSize: 12,
+            }}
+          >
+            {JSON.stringify(
+              {
+                values: (form as any).values,
+                errors: (form as any).errors,
+                touched: (form as any).touched,
+                dirty: (form as any).dirty,
+                validating: (form as any).validating,
+                hasSubmitted: (form as any).hasSubmitted,
+                submitCount: (form as any).submitCount,
+              },
+              null,
+              2
+            )}
+          </pre>
+        </details>
+      </form>
+    </Section>
+  );
 }
 
 export default function App() {
-  const form = useForm({
-    initialValues: {
-      user: {
-        email: "",
-        username: "",
-        password: "",
-        confirmPassword: "",
-        age: 0,
-      },
-      profile: {
-        bio: "",
-        address: {
-          street: "",
-        },
-      },
-      items: [{ name: "" }],
-    },
-    // change this to "blur" or "submit" while testing
-    validateOn: "change",
-
-    // v0.2: async debounce
-    asyncDebounceMs: 500,
-    blockSubmitWhileValidating: true,
-  });
-
-  // v0.2: async validation (slow on purpose)
-  const validateEmailAsync = async (value: unknown, _values: unknown) => {
-    const v = String(value ?? "");
-    if (!v) return undefined;
-
-    // simulate network
-    await sleep(800);
-
-    if (!v.includes("@")) return "Email must include @";
-    if (v.toLowerCase().includes("taken")) return "Email is already taken";
-    return undefined;
-  };
-
-  const onSubmit = form.handleSubmit(
-    async (values) => {
-      // simulate a submit call
-      await sleep(400);
-      alert("✅ Submitted!\n\n" + JSON.stringify(values, null, 2));
-    },
-    async (errors) => {
-      // simulate server-side error mapping
-      await sleep(200);
-      alert("❌ Invalid form.\n\n" + JSON.stringify(errors, null, 2));
-    }
-  );
+  const [tab, setTab] = useState<"submit" | "change" | "blur">("submit");
 
   return (
     <div
       style={{
-        maxWidth: 720,
-        margin: "40px auto",
-        padding: 16,
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-        lineHeight: 1.4,
+        padding: 20,
+        maxWidth: 980,
+        margin: "0 auto",
+        fontFamily: "ui-sans-serif, system-ui",
       }}
     >
-      <h1 style={{ margin: 0 }}>Formora Playground</h1>
-      <p style={{ marginTop: 8 }}>
-        Test everything we built so far: sync rules, async validation
-        (race-safe), debounced async validation, cross-field validation, v0.5
-        nested fields, v0.6 field arrays, and DX helpers.
-      </p>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          flexWrap: "wrap",
-          marginTop: 12,
-          padding: 12,
-          border: "1px solid #ddd",
-          borderRadius: 10,
-        }}
-      >
-        <div>
-          <b>isValid:</b> {form.isValid ? "yes" : "no"}
-        </div>
-        <div>
-          <b>isValidating:</b> {form.isValidating ? "yes" : "no"}
-        </div>
-        <div>
-          <b>submitCount:</b> {form.submitCount}
-        </div>
-        <div>
-          <b>hasSubmitted:</b> {form.hasSubmitted ? "yes" : "no"}
-        </div>
+      <h1 style={{ margin: 0, marginBottom: 8 }}>Formora Playground</h1>
+      <div style={{ color: "#64748b", marginBottom: 14, lineHeight: 1.4 }}>
+        This playground demonstrates <b>validateOn</b> modes,{" "}
+        <b>nested fields</b>, <b>field arrays</b>, and <b>reset/resetField</b>.
+        Errors are displayed using <b>field meta</b> (showError/error) — not
+        only on submit.
       </div>
 
-      {/* EMAIL (required + async + debounce) */}
-      <section style={{ marginTop: 18 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          1) Email — required + async + debounce
-        </h2>
+      <div
+        style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}
+      >
+        <Btn
+          tone={tab === "submit" ? "primary" : "neutral"}
+          onClick={() => setTab("submit")}
+        >
+          validateOn: submit
+        </Btn>
+        <Btn
+          tone={tab === "change" ? "primary" : "neutral"}
+          onClick={() => setTab("change")}
+        >
+          validateOn: change
+        </Btn>
+        <Btn
+          tone={tab === "blur" ? "primary" : "neutral"}
+          onClick={() => setTab("blur")}
+        >
+          validateOn: blur
+        </Btn>
+      </div>
 
-        <label style={{ display: "block" }}>
-          Email
-          <input
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder='Try: "taken@example.com" or type fast: a, ab, abc@...'
-            {...form.register("user.email", {
-              required: "Email is required",
-              // v0.2 async validation
-              validateAsync: validateEmailAsync,
-              // You can override debounce per-field:
-              // asyncDebounceMs: 300,
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>email error:</b> {form.errors.user?.email ?? "(none)"}
-        </div>
-        <div style={{ marginTop: 6 }}>
-          <b>validating.email:</b> {form.validating.user?.email ? "yes" : "no"}
-        </div>
-
-        <details style={{ marginTop: 8 }}>
-          <summary>How to verify async debounce + race safety</summary>
-          <ul>
-            <li>
-              Type quickly: the async validation should NOT fire on every
-              keystroke. It runs after you stop typing for ~500ms.
-            </li>
-            <li>
-              Race safety: type "taken" then quickly replace with
-              "john@example.com" — the old "taken" result must NOT override the
-              latest.
-            </li>
-            <li>
-              Blur bypass: click outside the input — async validation should run
-              immediately.
-            </li>
-          </ul>
-        </details>
-      </section>
-
-      {/* USERNAME (pattern + minLength/maxLength) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          2) Username — pattern + minLength/maxLength
-        </h2>
-
-        <label style={{ display: "block" }}>
-          Username
-          <input
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder="Only letters/numbers/underscore"
-            {...form.register("user.username", {
-              required: "Username is required",
-              minLength: { value: 3, message: "Min 3 characters" },
-              maxLength: { value: 15, message: "Max 15 characters" },
-              pattern: {
-                value: /^[a-zA-Z0-9_]+$/,
-                message: "Use only letters, numbers, underscore",
-              },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>username error:</b> {form.errors.user?.username ?? "(none)"}
-        </div>
-      </section>
-
-      {/* PASSWORD (minLength + custom validate) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          3) Password — minLength + custom validate()
-        </h2>
-
-        <label style={{ display: "block" }}>
-          Password
-          <input
-            type="password"
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder="Try 'password' to see custom validation"
-            {...form.register("user.password", {
-              required: "Password is required",
-              minLength: { value: 8, message: "Min 8 characters" },
-              validate: (value) => {
-                const v = String(value ?? "");
-                if (!v) return undefined;
-                if (v.toLowerCase().includes("password"))
-                  return "Too weak (contains 'password')";
-                return undefined;
-              },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>password error:</b> {form.errors.user?.password ?? "(none)"}
-        </div>
-      </section>
-
-      {/* CONFIRM PASSWORD (v0.4 cross-field validate) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          4) Confirm Password — cross-field validate() (v0.4)
-        </h2>
-
-        <label style={{ display: "block" }}>
-          Confirm password
-          <input
-            type="password"
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder="Must match password"
-            {...form.register("user.confirmPassword", {
-              required: "Confirm password is required",
-              validate: (value, values) => {
-                const v = String(value ?? "");
-                if (!v) return undefined;
-                const pass = String(values.user?.password ?? "");
-                return v !== pass ? "Passwords do not match" : undefined;
-              },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>confirmPassword error:</b>{" "}
-          {form.errors.user?.confirmPassword ?? "(none)"}
-        </div>
-
-        <details style={{ marginTop: 8 }}>
-          <summary>How to verify cross-field behavior</summary>
-          <ul>
-            <li>
-              Type a password, then type a different confirm password — you
-              should see “Passwords do not match”.
-            </li>
-            <li>Fix confirm password to match — the error should clear.</li>
-            <li>
-              Switch <code>validateOn</code> to <b>submit</b> and try submitting
-              without touching confirm password — submit should still validate
-              it.
-            </li>
-          </ul>
-        </details>
-      </section>
-
-      {/* AGE (min/max numbers) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>5) Age — number min/max</h2>
-
-        <label style={{ display: "block" }}>
-          Age
-          <input
-            type="number"
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            {...form.register("user.age", {
-              min: { value: 18, message: "Must be 18+" },
-              max: { value: 99, message: "Must be <= 99" },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>age error:</b> {form.errors.user?.age ?? "(none)"}
-        </div>
-      </section>
-
-      {/* BIO (maxLength) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>6) Bio — maxLength</h2>
-
-        <label style={{ display: "block" }}>
-          Bio
-          <textarea
-            style={{ width: "100%", padding: 10, marginTop: 6, minHeight: 90 }}
-            placeholder="Write something short…"
-            {...form.register("profile.bio", {
-              maxLength: { value: 50, message: "Max 50 characters" },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>bio error:</b> {form.errors.profile?.bio ?? "(none)"}
-        </div>
-      </section>
-
-      {/* NESTED FIELDS (v0.5) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          7) Nested fields (v0.5) — profile.address.street
-        </h2>
-
-        <label style={{ display: "block" }}>
-          Street
-          <input
-            style={{ width: "100%", padding: 10, marginTop: 6 }}
-            placeholder="profile.address.street"
-            {...form.register("profile.address.street", {
-              required: "Street is required",
-              minLength: { value: 3, message: "Min 3 characters" },
-            })}
-          />
-        </label>
-
-        <div style={{ marginTop: 8 }}>
-          <b>street error:</b>{" "}
-          {form.errors.profile?.address?.street ?? "(none)"}
-        </div>
-      </section>
-
-      {/* FIELD ARRAYS (v0.6) */}
-      <section style={{ marginTop: 22 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>
-          8) Field arrays (v0.6) — items.${"{"}i{"}"}.name
-        </h2>
-
-        <p style={{ marginTop: 6, color: "#444" }}>
-          Use <b>append</b> and <b>remove</b> to manage arrays. Validation uses
-          dot-index paths like <code>items.0.name</code>.
-        </p>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() =>
-              form.append("items", { name: "" }, { shouldTouch: true })
-            }
-          >
-            append item
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              form.setValues(
-                {
-                  ...form.values,
-                  items: [{ name: "" }, { name: "" }, { name: "" }],
-                },
-                { shouldTouch: true }
-              )
-            }
-          >
-            seed 3 items
-          </button>
-        </div>
-
-        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {form.values.items.map((item, i) => (
-            <div
-              key={i}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                padding: 12,
-              }}
-            >
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <label style={{ flex: 1 }}>
-                  Item name #{i + 1}
-                  <input
-                    style={{ width: "100%", padding: 10, marginTop: 6 }}
-                    placeholder={`items.${i}.name`}
-                    {...form.register(`items.${i}.name`, {
-                      required: "Item name is required",
-                      minLength: { value: 2, message: "Min 2 characters" },
-                    })}
-                  />
-                </label>
-
-                <button type="button" onClick={() => form.remove("items", i)}>
-                  remove
-                </button>
-              </div>
-
-              <div style={{ marginTop: 8 }}>
-                <b>item error:</b> {form.errors.items?.[i]?.name ?? "(none)"}
+      {tab === "submit" ? (
+        <DemoForm
+          mode="submit"
+          title="Mode: submit"
+          explanation={
+            <>
+              <div>
+                In <b>submit</b> mode, fields validate when you submit. Visible
+                errors still use meta so users aren’t spammed while typing.
               </div>
               <div style={{ marginTop: 6 }}>
-                <b>touched:</b> {form.touched.items?.[i]?.name ? "yes" : "no"}
+                Try: leave fields empty → submit → errors appear. Then fix email
+                and submit again.
               </div>
+            </>
+          }
+        />
+      ) : null}
+
+      {tab === "change" ? (
+        <DemoForm
+          mode="change"
+          title="Mode: change"
+          explanation={
+            <>
+              <div>
+                In <b>change</b> mode, validation runs on each keystroke. This
+                is useful for live feedback.
+              </div>
+              <div style={{ marginTop: 6 }}>
+                Try: type <code>taken@formora.dev</code> and watch async
+                validating + error message.
+              </div>
+            </>
+          }
+        />
+      ) : null}
+
+      {tab === "blur" ? (
+        <DemoForm
+          mode="blur"
+          title="Mode: blur"
+          explanation={
+            <>
+              <div>
+                In <b>blur</b> mode, fields validate when you leave the input.
+                This is a great balance between noisy change-validation and
+                submit-only validation.
+              </div>
+              <div style={{ marginTop: 6 }}>
+                Try: focus email, type something invalid, then tab away → error
+                shows.
+              </div>
+            </>
+          }
+        />
+      ) : null}
+
+      <Section
+        title="Quick checklist before release"
+        note={
+          <div>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>
+              What to verify manually
             </div>
-          ))}
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              <li>
+                Each mode shows errors at the expected time
+                (submit/change/blur).
+              </li>
+              <li>
+                Async email validation toggles validating state and shows a
+                readable message.
+              </li>
+              <li>
+                Nested path <code>profile.address.street</code> validates and
+                stores errors correctly.
+              </li>
+              <li>
+                Field arrays: create an error in item #0 and then
+                move/swap/insert/remove — meta should travel with the item.
+              </li>
+              <li>
+                reset() clears meta by default; resetField("email") resets only
+                that field.
+              </li>
+            </ul>
+          </div>
+        }
+      >
+        <div style={{ color: "#64748b" }}>
+          If all bullets behave correctly, you’re ready to publish.
         </div>
-
-        <details style={{ marginTop: 8 }}>
-          <summary>How to verify shifting behavior</summary>
-          <ul>
-            <li>
-              Click <b>seed 3 items</b>, then type only in the 2nd item.
-            </li>
-            <li>Remove the 1st item — the old 2nd item becomes the new 1st.</li>
-            <li>
-              Errors and touched state for that item should shift with it.
-            </li>
-          </ul>
-        </details>
-      </section>
-
-      {/* DX HELPERS */}
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>DX helpers (v0.3)</h2>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            onClick={() =>
-              form.setValue("user.email", "taken@example.com", {
-                shouldTouch: true,
-                shouldValidate: true,
-              })
-            }
-          >
-            setValue(email=taken…)
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              form.setValues(
-                {
-                  user: {
-                    email: "john@example.com",
-                    username: "john_25",
-                    password: "S3cretPass!",
-                    confirmPassword: "S3cretPass!",
-                    age: 25,
-                  },
-                  profile: {
-                    bio: "Hello from Formora",
-                    address: { street: "Abovyan" },
-                  },
-                },
-                { shouldTouch: true, shouldValidate: true }
-              )
-            }
-          >
-            setValues(valid)
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              form.setValues(
-                {
-                  user: {
-                    email: "bad",
-                    username: "??",
-                    password: "password",
-                    confirmPassword: "nope",
-                    age: 10,
-                  },
-                  profile: {
-                    bio: "This bio is definitely going to be longer than fifty characters. Too long!",
-                    address: { street: "" },
-                  },
-                },
-                { shouldTouch: true, shouldValidate: true }
-              )
-            }
-          >
-            setValues(invalid)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => form.setError("user.email", "Server: email blocked")}
-          >
-            setError(email)
-          </button>
-
-          <button type="button" onClick={() => form.clearError("user.email")}>
-            clearError(email)
-          </button>
-
-          <button type="button" onClick={() => form.clearErrors()}>
-            clearErrors()
-          </button>
-
-          <button
-            type="button"
-            onClick={() => form.setTouched("user.email", true)}
-          >
-            setTouched(email=true)
-          </button>
-
-          <button type="button" onClick={() => form.touchAll()}>
-            touchAll()
-          </button>
-
-          <button type="button" onClick={() => form.resetField("user.email")}>
-            resetField(email)
-          </button>
-
-          <button type="button" onClick={() => form.reset()}>
-            reset()
-          </button>
-        </div>
-
-        <p style={{ marginTop: 10, color: "#444" }}>
-          Tip: Use <b>setValues(invalid)</b> then try <b>clearErrors()</b> vs{" "}
-          <b>reset()</b> to feel the difference.
-        </p>
-      </section>
-
-      {/* SUBMIT */}
-      <section style={{ marginTop: 24 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>Submit</h2>
-        <form onSubmit={onSubmit}>
-          <button type="submit">Submit</button>
-        </form>
-        <p style={{ marginTop: 8, color: "#444" }}>
-          With <code>blockSubmitWhileValidating</code> enabled, submit waits for
-          async validation.
-        </p>
-      </section>
-
-      {/* DEBUG */}
-      <section style={{ marginTop: 18 }}>
-        <h2 style={{ margin: "12px 0 8px" }}>Debug state</h2>
-        <pre
-          style={{
-            background: "#f6f6f6",
-            padding: 12,
-            borderRadius: 10,
-            overflowX: "auto",
-          }}
-        >
-          {JSON.stringify(
-            {
-              values: form.values,
-              errors: form.errors,
-              touched: form.touched,
-              validating: form.validating,
-              isValid: form.isValid,
-              isValidating: form.isValidating,
-              submitCount: form.submitCount,
-              hasSubmitted: form.hasSubmitted,
-            },
-            null,
-            2
-          )}
-        </pre>
-      </section>
+      </Section>
     </div>
   );
 }
