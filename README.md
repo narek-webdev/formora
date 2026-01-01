@@ -6,8 +6,7 @@
 
 **Formora** is a tiny, headless form state and validation hook for React.
 
-📚 Documentation: https://formora.dev/docs/intro  
-🌐 Website: https://formora.dev
+📚 Documentation: https://narek-webdev.github.io/formora/
 
 ---
 
