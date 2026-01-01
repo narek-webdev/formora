@@ -1,0 +1,113 @@
+/**
+ * Homepage styles for Formora
+ * Scoped via CSS modules
+ */
+
+.heroBanner {
+  padding: 4.5rem 0 4rem;
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+  color: #e5e7eb;
+}
+
+.heroContainer {
+  display: flex;
+  justify-content: center;
+}
+
+.heroContent {
+  max-width: 880px;
+  text-align: center;
+}
+
+.heroTitle {
+  font-size: 3rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f8fafc;
+}
+
+.heroSubtitle {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #cbd5f5;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-weight: 600;
+}
+
+.btnOutline {
+  border-color: #60a5fa;
+  color: #60a5fa;
+}
+
+.btnOutline:hover {
+  color: #93c5fd;
+  border-color: #93c5fd;
+}
+
+.heroNote {
+  margin-top: 1.25rem;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+.features {
+  padding: 4rem 0 5rem;
+  background: #020617;
+}
+
+.featureRow {
+  margin-top: 2.5rem;
+}
+
+.featureCard {
+  height: 100%;
+  padding: 1.75rem 1.5rem;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.featureCard:hover {
+  border-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+.featureTitle {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  color: #f8fafc;
+}
+
+.featureDescription {
+  margin: 0;
+  color: #cbd5f5;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+@media screen and (max-width: 996px) {
+  .heroTitle {
+    font-size: 2.2rem;
+  }
+
+  .heroContent {
+    padding: 0 1rem;
+  }
+
+  .heroSubtitle {
+    font-size: 1.05rem;
+  }
+}

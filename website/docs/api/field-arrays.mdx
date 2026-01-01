@@ -1,0 +1,167 @@
+---
+sidebar_position: 3
+---
+
+# Field Arrays API
+
+Formora provides a complete set of helpers for working with array fields.
+
+These helpers operate on **path-based array fields** and ensure that values and all related meta state stay consistent.
+
+---
+
+## Overview
+
+All field array helpers:
+
+- operate on a field path that points to an array
+- update values and meta state atomically
+- work at any nesting depth
+
+Example array paths:
+
+```ts
+items
+users.0.addresses
+order.lines
+```
+
+---
+
+## `append(name, value)`
+
+Adds a new item to the end of the array.
+
+### Signature
+
+```ts
+append(name: string, value: any): void
+```
+
+### Behavior
+
+- pushes `value` to the array at `name`
+- initializes meta state for the new item
+- does not affect existing items
+
+---
+
+## `remove(name, index)`
+
+Removes an item at a specific index.
+
+### Signature
+
+```ts
+remove(name: string, index: number): void
+```
+
+### Behavior
+
+- removes the item at `index`
+- shifts all items after it
+- shifts `errors`, `touched`, `dirty`, and `validating` with the items
+- invalidates async validation for affected indices
+
+---
+
+## `insert(name, index, value)`
+
+Inserts a new item at a specific index.
+
+### Signature
+
+```ts
+insert(name: string, index: number, value: any): void
+```
+
+### Behavior
+
+- inserts `value` at `index`
+- shifts existing items to the right
+- initializes meta state for the new item
+
+---
+
+## `replace(name, index, value)`
+
+Replaces an item at a specific index.
+
+### Signature
+
+```ts
+replace(name: string, index: number, value: any): void
+```
+
+### Behavior
+
+- replaces the value at `index`
+- resets meta state for that item
+- does not affect other indices
+
+---
+
+## `move(name, from, to)`
+
+Moves an item from one index to another.
+
+### Signature
+
+```ts
+move(name: string, from: number, to: number): void
+```
+
+### Behavior
+
+- removes the item at `from`
+- reinserts it at `to`
+- moves all meta state with the item
+- invalidates async validation for affected indices
+
+---
+
+## `swap(name, a, b)`
+
+Swaps two items.
+
+### Signature
+
+```ts
+swap(name: string, a: number, b: number): void
+```
+
+### Behavior
+
+- swaps values at indices `a` and `b`
+- swaps all related meta state
+- invalidates async validation for both indices
+
+---
+
+## Async validation guarantees
+
+For all array operations, Formora guarantees that:
+
+- async validations are invalidated when indices change
+- stale async results cannot attach to the wrong item
+- `validating` flags are cleared appropriately
+
+This is handled automatically.
+
+---
+
+## Guarantees
+
+- Values and meta state always stay aligned
+- Nested arrays work at any depth
+- Operations are synchronous and predictable
+- No orphaned errors after reordering
+
+---
+
+## Related documentation
+
+- **Guides → Field Arrays** – conceptual usage and examples
+- **Concepts → Async Validation** – stale protection details
+
+This API page defines the exact contract for field array helpers.

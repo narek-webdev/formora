@@ -1,0 +1,209 @@
+---
+sidebar_position: 2
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# `register(name, rules)`
+
+`register` connects an input to Formora.
+
+It returns props for a controlled input (`name`, `value`, `onChange`, `onBlur`) and ensures:
+
+- values update correctly
+- validation runs according to `validateOn`
+- `touched`, `dirty`, and `validating` are tracked
+- errors are stored at the correct path
+
+---
+
+## Signature
+
+```ts
+register(
+  name: string,
+  rules?: {
+    validate?: (value: unknown, values: any) => string | undefined;
+    validateAsync?: (value: unknown, values: any) => Promise<string | undefined>;
+  }
+): {
+  name: string;
+  value: any;
+  onChange: (e: any) => void;
+  onBlur: () => void;
+}
+```
+
+:::info
+Return `undefined` from validators when the field is valid. Return a string when invalid.
+:::
+
+---
+
+## `name` is a path
+
+Formora treats field names as paths.
+
+Examples:
+
+- `email`
+- `profile.address.street`
+- `items.0.name`
+
+This is how Formora supports nested objects and arrays without special APIs.
+
+---
+
+## Sync validation (`validate`)
+
+Use `validate` for fast, synchronous rules.
+
+```tsx
+<input
+  {...form.register("email", {
+    validate: (value) => {
+      const v = String(value ?? "").trim();
+      return v ? undefined : "Email is required";
+    },
+  })}
+/>
+```
+
+### Access to all values
+
+The validator also receives the full values object as the second argument.
+
+```ts
+validate: (value, values) => {
+  if (String(value ?? "") !== String(values.confirmEmail ?? "")) {
+    return "Emails do not match";
+  }
+  return undefined;
+};
+```
+
+---
+
+## Async validation (`validateAsync`)
+
+Use `validateAsync` for server checks (username availability, coupon codes, etc.).
+
+```tsx
+<input
+  {...form.register("username", {
+    validateAsync: async (value, values) => {
+      const v = String(value ?? "").trim();
+      if (!v) return "Username is required";
+
+      const res = await fetch(`/api/username?value=${encodeURIComponent(v)}`);
+      const data = await res.json();
+
+      return data.available ? undefined : "Username is taken";
+    },
+  })}
+/>
+```
+
+:::warning
+In `change` mode, prefer debounced async validation (Formora supports `debounceMs`).
+:::
+
+---
+
+## Stale async protection
+
+Async validation can resolve out of order.
+
+Formora protects you automatically:
+
+- if the value changes, older async results are ignored
+- if an array item is removed or re-ordered, async validations are invalidated
+
+This prevents errors attaching to the wrong item after array operations.
+
+---
+
+## Showing errors (recommended pattern)
+
+Formora separates:
+
+- **validation** (producing `errors`)
+- **visibility** (when UI should display them)
+
+Use `shouldShowError` for consistent UX:
+
+```tsx
+<input {...form.register("email", { validate: ... })} />
+{form.shouldShowError("email") && <p>{form.errors.email}</p>}
+```
+
+Or use `getFieldMeta`:
+
+```tsx
+const meta = form.getFieldMeta("email");
+return meta.error && form.shouldShowError("email") ? <p>{meta.error}</p> : null;
+```
+
+---
+
+## Handling different input types
+
+`register` is designed around typical text-like inputs.
+
+For checkboxes, numbers, or custom components, you can use `setValue` manually.
+
+<Tabs groupId="inputs">
+  <TabItem value="checkbox" label="Checkbox" default>
+
+```tsx
+<input
+  type="checkbox"
+  checked={!!form.values.acceptTerms}
+  onChange={(e) => form.setValue("acceptTerms", e.target.checked)}
+  onBlur={() => form.setTouched("acceptTerms", true)}
+/>;
+{
+  form.shouldShowError("acceptTerms") && <p>{form.errors.acceptTerms}</p>;
+}
+```
+
+  </TabItem>
+  <TabItem value="number" label="Number">
+
+```tsx
+<input
+  type="number"
+  value={form.values.age ?? ""}
+  onChange={(e) => form.setValue("age", Number(e.target.value))}
+  onBlur={() => form.setTouched("age", true)}
+/>
+```
+
+  </TabItem>
+  <TabItem value="custom" label="Custom component">
+
+```tsx
+<MySelect
+  value={form.values.country}
+  onChange={(value) => form.setValue("country", value)}
+  onBlur={() => form.setTouched("country", true)}
+/>
+```
+
+  </TabItem>
+</Tabs>
+
+:::tip
+If you often need special input handling, you can build a tiny wrapper component that integrates with Formora.
+:::
+
+---
+
+## Summary
+
+- `register` connects inputs to Formora
+- use `validate` for sync rules
+- use `validateAsync` for server checks
+- Formora protects you from stale async results automatically
+- use `shouldShowError` to keep error visibility rules consistent

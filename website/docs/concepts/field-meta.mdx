@@ -1,0 +1,107 @@
+---
+sidebar_position: 2
+---
+
+# Field Meta
+
+Field meta describes **how a field has been interacted with**, not whether its value is valid.
+
+Formora intentionally separates **meta state** from **validation** so UI behavior stays predictable, consistent, and easy to reason about.
+
+---
+
+## What is field meta?
+
+Field meta answers questions like:
+
+- Has the user interacted with this field?
+- Has its value changed from the initial value?
+- Is async validation currently running?
+
+It does **not** decide whether a value is correct.
+
+---
+
+## Meta properties
+
+### `touched`
+
+`touched` becomes `true` when a field:
+
+- loses focus (`blur`)
+- is manually marked as touched
+
+`touched` means _the user has interacted with the field_.
+
+:::info
+A touched field is **not necessarily invalid**.
+:::
+
+---
+
+### `dirty`
+
+`dirty` indicates whether the current value differs from `initialValues`.
+
+- comparison is value-based, not event-based
+- works for nested paths (`profile.email`)
+- works for arrays (`items.0.name`)
+
+When array items are moved or reordered, **dirty state moves with the item**, not the index.
+
+---
+
+### `validating`
+
+`validating` is `true` while async validation is in progress for a field.
+
+This flag is cleared automatically when:
+
+- the field value changes
+- an array item is removed
+- array indices are shifted (move / swap)
+
+This prevents stale async UI states.
+
+---
+
+### `error`
+
+`error` is a string produced by validation rules.
+
+- errors exist only at leaf nodes
+- errors may exist even if they are not visible yet
+
+Validation decides **what** the error is — not **when** it is shown.
+
+---
+
+## Error visibility vs validation
+
+Formora strictly separates two responsibilities:
+
+| Responsibility  | Controlled by           |
+| --------------- | ----------------------- |
+| What is wrong   | validation rules        |
+| When to show it | `shouldShowError(name)` |
+
+This separation allows consistent UX across all validation modes.
+
+```tsx
+const meta = form.getFieldMeta("email");
+
+if (form.shouldShowError("email")) {
+  return <p>{meta.error}</p>;
+}
+```
+
+You should **never** reimplement visibility rules manually.
+
+---
+
+## Summary
+
+- Meta state describes user interaction, not correctness
+- Validation produces errors
+- `shouldShowError` controls UX timing
+- Meta state stays aligned during array operations

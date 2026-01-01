@@ -1,0 +1,150 @@
+---
+sidebar_position: 3
+---
+
+# Async Validation
+
+Async validation is required for real-world forms:
+
+- checking username / email availability
+- validating coupon codes
+- verifying data against a server
+
+The problem is that async work can finish **out of order**.
+
+Formora handles this safely by design.
+
+---
+
+## The async validator
+
+You can provide an async validator with `validateAsync`:
+
+```tsx
+<input
+  {...form.register("username", {
+    validateAsync: async (value) => {
+      const v = String(value ?? "").trim();
+      if (!v) return "Username is required";
+
+      const res = await fetch(`/api/username?value=${encodeURIComponent(v)}`);
+      const data = await res.json();
+
+      return data.available ? undefined : "Username is taken";
+    },
+  })}
+/>
+```
+
+:::info
+Async validators return `undefined` for valid and a string for an error.
+:::
+
+---
+
+## The real problem: stale results
+
+Consider this timeline:
+
+1. user types `jo`
+2. request A starts
+3. user types `john`
+4. request B starts
+5. request A finishes last and incorrectly overwrites state
+
+Without protection, the UI can show the wrong error for the current value.
+
+---
+
+## Formora’s stale protection
+
+Formora automatically prevents stale async results from overwriting newer state.
+
+It does this by invalidating in-flight validations when:
+
+- the field value changes
+- an array item is removed
+- array indices shift (move / swap)
+
+Only the **latest** async result for a field path is allowed to update `errors`.
+
+---
+
+## `validating` state
+
+While an async validation is running, the field meta includes:
+
+- `validating: true`
+
+This is tracked in the nested `form.validating` map.
+
+When a validation is invalidated (due to value changes or array operations), Formora clears the validating flag to avoid stale loading UI.
+
+---
+
+## Debouncing async validation
+
+In `change` mode, async validators may be triggered often.
+
+Use `debounceMs` to reduce request volume:
+
+```ts
+const form = useForm({
+  initialValues: { username: "" },
+  validateOn: "change",
+  debounceMs: 300,
+});
+```
+
+:::tip
+Even in `blur` mode, debounce can be useful when an input emits frequent changes (custom components).
+:::
+
+---
+
+## Async validation in field arrays
+
+Async validation inside arrays is especially tricky because indices can shift.
+
+Formora handles it automatically:
+
+- removing an item invalidates async validation for that index and everything after it
+- moving/swapping items invalidates async validation for affected indices
+- stale results are never applied to the wrong item
+
+This prevents issues like:
+
+- “username taken” error jumping to a different row after reorder
+- removed items receiving late async errors
+
+---
+
+## Recommended UI pattern
+
+Use `getFieldMeta` and `shouldShowError` for consistent UX:
+
+```tsx
+const meta = form.getFieldMeta('username');
+
+return (
+  <>
+    <input {...form.register('username', { validateAsync: ... })} />
+
+    {meta.validating && <p>Checking availability…</p>}
+
+    {form.shouldShowError('username') && meta.error && (
+      <p>{meta.error}</p>
+    )}
+  </>
+);
+```
+
+---
+
+## Summary
+
+- Async validation can resolve out of order
+- Formora blocks stale results automatically
+- `validating` is accurate even when async work is invalidated
+- `debounceMs` reduces request volume in `change` mode
+- Arrays are safe: async errors never attach to the wrong item

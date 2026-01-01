@@ -1,0 +1,298 @@
+---
+sidebar_position: 1
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+# `useForm`
+
+`useForm` is the main entrypoint to Formora. It creates a form controller that manages:
+
+- `values`
+- `errors`
+- `touched` / `dirty`
+- `validating` (async validation state)
+- submission handling and validation timing (`validateOn`)
+
+---
+
+## Signature
+
+```ts
+function useForm<TValues>(
+  options: UseFormOptions<TValues>
+): FormController<TValues>;
+```
+
+---
+
+## Options
+
+### `initialValues`
+
+**Type:** `TValues`
+
+The initial form values. These values are used as the baseline for:
+
+- `reset()`
+- `resetField(name)`
+- dirty checking (`dirty`)
+
+:::info
+Formora treats field names as paths, so `initialValues` can contain nested objects and arrays.
+:::
+
+---
+
+### `validateOn`
+
+**Type:** `'submit' | 'change' | 'blur'`
+
+Controls when validation runs.
+
+- `submit` – validate only on submit
+- `change` – validate on every change
+- `blur` – validate when a field loses focus
+
+See: **[Validation Modes](../concepts/validate-on)**.
+
+---
+
+### `mode`
+
+**Type:** `'firstError' | 'all'`
+
+Controls how submit collects errors:
+
+- `firstError` – stop at the first error (faster)
+- `all` – validate all registered fields and return full error map
+
+:::tip
+Use `all` for large forms where you want to show a complete list of issues on submit.
+:::
+
+---
+
+### `debounceMs`
+
+**Type:** `number` (optional)
+
+Debounce duration for async validation (when `validateAsync` is used).
+
+This reduces network calls in `change` mode.
+
+---
+
+### `onSubmitInvalid`
+
+**Type:** `(errors: any) => void` (optional)
+
+Called when a submit occurs and the form is invalid.
+
+Useful for:
+
+- scrolling to the first error
+- focusing the first invalid field
+- showing a form-level message
+
+---
+
+## Return value
+
+`useForm` returns a controller object with state + actions.
+
+---
+
+## State
+
+### `values`
+
+Current values object.
+
+### `errors`
+
+Nested error object. Errors are strings at leaf nodes.
+
+Example:
+
+```ts
+{
+  email: "Required",
+  profile: {
+    address: {
+      street: "Too short",
+    },
+  },
+  items: [{ name: "Required" }, undefined, { name: "Too short" }],
+}
+```
+
+### `touched`
+
+Nested boolean map indicating whether a field has been touched.
+
+### `dirty`
+
+Nested boolean map indicating whether a field differs from `initialValues`.
+
+### `validating`
+
+Nested boolean map indicating whether a field is currently async-validating.
+
+### `submitCount`
+
+Number of times `handleSubmit` has been called.
+
+---
+
+## Core methods
+
+### `register(name, rules)`
+
+Registers an input and returns props (`name`, `value`, `onChange`, `onBlur`) for a controlled input.
+
+See: **[register](./register)**.
+
+---
+
+### `handleSubmit(onValid)`
+
+Returns a submit handler.
+
+- runs submit validation according to `mode`
+- if valid: calls `onValid(values)`
+- if invalid: updates `errors` and calls `onSubmitInvalid` (if provided)
+
+Example:
+
+```tsx
+<form onSubmit={form.handleSubmit((values) => console.log(values))}>...</form>
+```
+
+---
+
+### `setValue(name, value, opts?)`
+
+Sets a field value by path.
+
+Common use cases:
+
+- custom inputs
+- formatting
+- setting nested values
+
+---
+
+### `setValues(partial)`
+
+Sets multiple values via shallow merge.
+
+---
+
+### `reset(options?)`
+
+Resets the form to `initialValues`.
+
+See: **[Reset guide](../guides/reset)** and **[Reset API](./reset)**.
+
+---
+
+### `resetField(name, options?)`
+
+Resets a single field to its initial value.
+
+See: **[Reset guide](../guides/reset)** and **[Reset API](./reset)**.
+
+---
+
+## Meta helpers
+
+### `shouldShowError(name)`
+
+Returns `true` if the UI should display an error for this field.
+
+It combines:
+
+- `validateOn`
+- touched state
+- submit state
+
+This makes error visibility rules consistent across the entire form.
+
+---
+
+### `getFieldMeta(name)`
+
+Returns a meta object for a field:
+
+```ts
+{
+  touched: boolean;
+  dirty: boolean;
+  validating: boolean;
+  error?: string;
+}
+```
+
+---
+
+## Field array helpers
+
+Formora provides array helpers for dynamic lists:
+
+- `append(name, value)`
+- `remove(name, index)`
+- `insert(name, index, value)`
+- `replace(name, index, value)`
+- `move(name, from, to)`
+- `swap(name, a, b)`
+
+See: **[Field Arrays guide](../guides/field-arrays)** and **[Field Arrays API](./field-arrays)**.
+
+---
+
+## Examples
+
+<Tabs groupId="validateOn">
+  <TabItem value="submit" label="submit" default>
+
+```tsx
+const form = useForm({
+  initialValues: { email: "" },
+  validateOn: "submit",
+});
+```
+
+  </TabItem>
+  <TabItem value="change" label="change">
+
+```tsx
+const form = useForm({
+  initialValues: { email: "" },
+  validateOn: "change",
+});
+```
+
+  </TabItem>
+  <TabItem value="blur" label="blur">
+
+```tsx
+const form = useForm({
+  initialValues: { email: "" },
+  validateOn: "blur",
+});
+```
+
+  </TabItem>
+</Tabs>
+
+---
+
+## Notes & guarantees
+
+- Field names are paths (e.g. `profile.email`, `items.0.name`)
+- Field arrays shift values + meta state together
+- Async validation is protected from stale results
+
+If you rely on these behaviors, keep your imports limited to the public API and avoid internal modules.

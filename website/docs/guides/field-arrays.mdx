@@ -1,0 +1,169 @@
+---
+sidebar_position: 2
+---
+
+# Field Arrays
+
+Dynamic lists are one of the hardest parts of form management.
+
+Formora treats **field arrays as first‑class citizens**, ensuring values and all related meta state stay consistent when items change.
+
+---
+
+## Why field arrays are hard
+
+In most form libraries, array operations introduce subtle bugs:
+
+- errors remain attached to old indices
+- `touched` and `dirty` flags drift out of sync
+- async validation resolves for removed or moved items
+
+These issues usually appear when users:
+
+- remove an item from the middle
+- reorder items
+- perform async validation inside arrays
+
+Formora solves these problems **by design**.
+
+---
+
+## Basic example
+
+```tsx
+const form = useForm({
+  initialValues: {
+    items: [{ name: "" }],
+  },
+  validateOn: "blur",
+});
+```
+
+Register array fields using path notation:
+
+```tsx
+<input
+  {...form.register(`items.${index}.name`, {
+    validate: (value) => (!value ? "Name is required" : undefined),
+  })}
+/>
+```
+
+---
+
+## Array operations
+
+Formora provides a complete set of array helpers:
+
+- `append(name, value)`
+- `remove(name, index)`
+- `insert(name, index, value)`
+- `replace(name, index, value)`
+- `move(name, from, to)`
+- `swap(name, a, b)`
+
+All operations update:
+
+- values
+- errors
+- touched
+- dirty
+- validating
+
+in a **single, consistent operation**.
+
+---
+
+## Example: append & remove
+
+```tsx
+<button
+  type="button"
+  onClick={() => form.append('items', { name: '' })}
+>
+  Add item
+</button>
+
+<button
+  type="button"
+  onClick={() => form.remove('items', index)}
+>
+  Remove
+</button>
+```
+
+When an item is removed:
+
+- values shift left
+- all meta state shifts with the item
+- pending async validations are invalidated
+
+---
+
+## Reordering items safely
+
+```tsx
+form.move("items", 0, 2);
+form.swap("items", 1, 2);
+```
+
+:::info
+Errors and meta state **move with the item**, not with the index.
+:::
+
+This prevents orphaned errors after drag‑and‑drop reordering.
+
+---
+
+## Async validation inside arrays
+
+Async validation is particularly dangerous in arrays.
+
+Formora guarantees that:
+
+- removing an item cancels async validation for that item
+- moving items invalidates outdated async results
+- stale async results never overwrite newer state
+
+This behavior is automatic — no extra configuration required.
+
+---
+
+## Nested arrays
+
+Arrays can be nested inside objects (and vice‑versa):
+
+```ts
+users.0.addresses.1.street
+```
+
+All array helpers work correctly at **any nesting depth**.
+
+---
+
+## Common patterns
+
+### Validation per item
+
+```ts
+validate: (value) => (value.length < 3 ? "Too short" : undefined);
+```
+
+### Conditional rendering
+
+```tsx
+{
+  form.values.items.map((_, index) => <ItemRow key={index} index={index} />);
+}
+```
+
+---
+
+## Summary
+
+- Field arrays are first‑class in Formora
+- All meta state stays aligned with values
+- Async validation is safe by default
+- Reordering never breaks errors
+
+If your form contains dynamic lists, **Formora is built for this use case**.
