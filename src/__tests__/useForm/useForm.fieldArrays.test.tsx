@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useForm } from "./useForm/useForm";
+import { useForm } from "../../index";
 
 describe("useForm v0.6 - field arrays", () => {
   it("append adds a new item at the array root", () => {

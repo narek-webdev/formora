@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { useForm } from "./useForm";
+import { useForm } from "../index";
 
 describe("smoke", () => {
   it("exports useForm", () => {

@@ -7,7 +7,7 @@ import {
   fireEvent,
   act,
 } from "@testing-library/react";
-import { useForm } from "./useForm";
+import { useForm } from "../../index";
 
 function DebounceForm({
   validateOn = "change",

@@ -2,7 +2,7 @@ import * as React from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useForm } from "./useForm";
+import { useForm } from "../../index";
 
 function UsernameForm() {
   const form = useForm({
@@ -15,8 +15,7 @@ function UsernameForm() {
       <input
         aria-label="username"
         {...form.register("username", {
-          validate: (value) =>
-            value === "admin" ? "Username is reserved" : undefined,
+          maxLength: { value: 5, message: "Username is too long" },
         })}
       />
       <div data-testid="error">{form.errors.username ?? ""}</div>
@@ -24,24 +23,24 @@ function UsernameForm() {
   );
 }
 
-describe("useForm - custom validate", () => {
-  it("supports custom validation function", async () => {
+describe("useForm - maxLength", () => {
+  it("shows maxLength error on blur for long value and clears when short enough", async () => {
     const user = userEvent.setup();
     render(<UsernameForm />);
 
     const input = screen.getByLabelText("username");
 
-    // Invalid
-    await user.type(input, "admin");
+    // Too long
+    await user.type(input, "abcdef");
     await user.tab();
     expect(screen.getByTestId("error")).toHaveTextContent(
-      "Username is reserved"
+      "Username is too long"
     );
 
-    // Valid
+    // Short enough
     await user.click(input);
     await user.clear(input);
-    await user.type(input, "john");
+    await user.type(input, "abc");
     await user.tab();
 
     expect(screen.getByTestId("error")).toHaveTextContent("");

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useForm } from "./useForm/useForm";
+import { useForm } from "../../index";
 
 // Note: v0.5 supports nested OBJECT paths using dot notation only.
 // Examples: "user.email", "profile.address.street"

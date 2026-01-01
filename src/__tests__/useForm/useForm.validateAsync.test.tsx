@@ -2,7 +2,7 @@ import * as React from "react";
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useForm } from "./useForm";
+import { useForm } from "../../index";
 
 afterEach(() => {
   cleanup();

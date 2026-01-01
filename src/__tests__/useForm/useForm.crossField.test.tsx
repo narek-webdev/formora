@@ -4,7 +4,7 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // Adjust this import if your project re-exports useForm from a different entry.
-import { useForm } from "./useForm/useForm";
+import { useForm } from "../../index";
 
 afterEach(() => {
   cleanup();
