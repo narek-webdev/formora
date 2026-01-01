@@ -8,15 +8,37 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ### Added
 
-- (none)
+- Field array helpers: `move`, `swap`, `insert`, and `replace`.
+- Form reset helpers: `reset()` and `resetField()` with fine-grained keep options.
 
 ### Changed
 
-- (none)
+- Field array state handling to correctly preserve and shift nested `errors`, `touched`, `dirty`, and `validating` state for all operations.
+- Dirty state tracking to support array roots and nested fields without clobbering child state.
 
 ### Fixed
 
-- (none)
+- Prevented stale async validation results after array mutations and form resets.
+- Fixed edge cases with sparse array state during reorder operations.
+
+---
+
+## [0.6.1] - 2026-01-02
+
+### Added
+
+- Complete **field array API**: `append`, `remove`, `move`, `swap`, `insert`, and `replace`.
+- `reset()` and `resetField()` helpers with keep-options for errors, touched, dirty, and validating state.
+
+### Changed
+
+- Improved internal handling of array-based form state to ensure correctness with sparse indices.
+- Async validation is now deterministically cancelled and invalidated on array mutations and resets.
+
+### Fixed
+
+- Fixed loss of nested dirty state when manipulating array roots.
+- Fixed incorrect state retention during complex array reorder operations.
 
 ---
 
@@ -153,7 +175,8 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 - Test suite with Vitest + Testing Library.
 - GitHub Actions CI to run typecheck, tests, and build.
 
-[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/narek-webdev/formora/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/narek-webdev/formora/releases/tag/v0.6.1
 [0.6.0]: https://github.com/narek-webdev/formora/releases/tag/v0.6.0
 [0.5.0]: https://github.com/narek-webdev/formora/releases/tag/v0.5.0
 [0.4.0]: https://github.com/narek-webdev/formora/releases/tag/v0.4.0
