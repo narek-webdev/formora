@@ -1,4 +1,4 @@
-name: Deploy Docs to GitHub Pages
+name: Deploy Docs (GitHub Pages)
 
 on:
   push:
@@ -7,10 +7,16 @@ on:
       - "website/**"
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,18 +27,25 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
 
-      - name: Install dependencies
+      - name: Install
         working-directory: website
         run: npm ci
 
-      - name: Build website
+      - name: Build
         working-directory: website
         run: npm run build
 
-      - name: Deploy to GitHub Pages
-        working-directory: website
-        env:
-          GIT_USER: narek-webdev
-          USE_SSH: false
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run deploy
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
