@@ -411,7 +411,16 @@ export function useForm<T extends Record<string, any>>(
       name: String(name),
       value: getByPath(values, name) ?? "",
       onChange: (e: any) => {
-        const nextValue = e?.target ? e.target.value : e;
+        const t = e?.target;
+        const nextValue = t
+          ? t.type === "checkbox"
+            ? Boolean(t.checked)
+            : t.type === "number"
+            ? t.value === "" || Number.isNaN(t.valueAsNumber)
+              ? ""
+              : t.valueAsNumber
+            : t.value
+          : e;
 
         setValues((prev: any) => {
           const next: any = setByPath(prev, name, nextValue);
