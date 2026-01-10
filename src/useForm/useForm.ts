@@ -412,8 +412,13 @@ export function useForm<T extends Record<string, any>>(
       value: getByPath(values, name) ?? "",
       onChange: (e: any) => {
         const t = e?.target;
+        if (t?.type === "radio") {
+          if (!t.checked) return;
+        }
         const nextValue = t
-          ? t.type === "checkbox"
+          ? t.tagName === "SELECT" && t.multiple
+            ? Array.from(t.selectedOptions ?? []).map((o: any) => o.value)
+            : t.type === "checkbox"
             ? Boolean(t.checked)
             : t.type === "number"
             ? t.value === "" || Number.isNaN(t.valueAsNumber)
