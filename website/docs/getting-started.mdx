@@ -7,7 +7,9 @@ import TabItem from "@theme/TabItem";
 
 # Getting Started
 
-This guide walks you through installing Formora and building your first form with **clear validation rules** and **predictable UX**.
+This guide walks you through installing Formora and building your first form with **explicit validation rules** and **predictable UX**.
+
+Everything shown here is based on real, tested behavior in Formora.
 
 ---
 
@@ -41,13 +43,18 @@ yarn add formora
 
 ## Your first form
 
-Below is a minimal but complete example using **submit-based validation**.
+Below is a **minimal, complete example** using **submit-based validation**.
 
 ```tsx
 import { useForm } from "formora";
 
-function LoginForm() {
-  const form = useForm({
+type Values = {
+  email: string;
+  password: string;
+};
+
+export function LoginForm() {
+  const { register, values, errors, handleSubmit } = useForm<Values>({
     initialValues: {
       email: "",
       password: "",
@@ -56,30 +63,32 @@ function LoginForm() {
   });
 
   return (
-    <form onSubmit={form.handleSubmit((values) => console.log(values))}>
+    <form onSubmit={handleSubmit((values) => console.log(values))}>
       <div>
         <label>Email</label>
         <input
-          {...form.register("email", {
-            validate: (value) => (!value ? "Email is required" : undefined),
+          {...register("email", {
+            required: "Email is required",
           })}
         />
-        {form.shouldShowError("email") && <p>{form.errors.email}</p>}
+        {errors?.email && <p>{String(errors.email)}</p>}
       </div>
 
       <div>
         <label>Password</label>
         <input
           type="password"
-          {...form.register("password", {
-            validate: (value) =>
-              value.length < 6 ? "Minimum 6 characters" : undefined,
+          {...register("password", {
+            required: "Password is required",
+            minLength: { value: 6, message: "Minimum 6 characters" },
           })}
         />
-        {form.shouldShowError("password") && <p>{form.errors.password}</p>}
+        {errors?.password && <p>{String(errors.password)}</p>}
       </div>
 
       <button type="submit">Sign in</button>
+
+      <pre>{JSON.stringify(values, null, 2)}</pre>
     </form>
   );
 }
@@ -94,10 +103,10 @@ Validation runs **only when the form is submitted** because `validateOn` is set 
 :::
 
 - No errors are shown while typing
-- Errors appear only after the first submit
-- Error visibility is controlled by `shouldShowError`
+- Errors appear after submit
+- In this example we render errors directly from `errors`
 
-This makes validation behavior **explicit and predictable**.
+This keeps validation behavior **explicit and predictable**.
 
 ---
 
@@ -105,11 +114,11 @@ This makes validation behavior **explicit and predictable**.
 
 Formora supports three validation modes:
 
-- `submit` – validate on submit only
-- `change` – validate on every change
-- `blur` – validate when a field loses focus
+- **`submit`** — validate on submit only (classic forms)
+- **`change`** — validate on every change (live feedback)
+- **`blur`** — validate when a field loses focus
 
-You can switch modes by changing one option:
+Switch modes with a single option:
 
 ```ts
 const form = useForm({
@@ -121,11 +130,71 @@ Each mode is explained in detail in the **Validation Modes** section.
 
 ---
 
+## Built-in rules vs custom validation
+
+Formora includes **built-in rules** for common cases. Prefer these when possible because they are short, readable, and consistent.
+
+### Built-in rules (recommended)
+
+```tsx
+<input
+  {...register("password", {
+    required: "Password is required",
+    minLength: { value: 6, message: "Minimum 6 characters" },
+  })}
+/>
+```
+
+### Custom `validate` (advanced)
+
+If you need custom logic, use `validate`. It must return:
+
+- `undefined` when the field is valid
+- a `string` error message when invalid
+
+```tsx
+<input
+  {...register("password", {
+    validate: (value, values) => {
+      const v = String(value ?? "");
+      if (!v) return "Password is required";
+      if (v.length < 6) return "Minimum 6 characters";
+      if (v.includes("password")) return "Too easy";
+      return undefined;
+    },
+  })}
+/>
+```
+
+---
+
+## Common patterns
+
+### Showing errors
+
+A common pattern is to show errors **only after a field is touched**:
+
+```tsx
+// Blur/change UX: show errors only after a field is touched
+{
+  touched?.email && errors?.email && <p>{String(errors.email)}</p>;
+}
+
+// Submit-only mode: you can also render directly from `errors`
+{
+  errors?.email && <p>{String(errors.email)}</p>;
+}
+```
+
+This avoids showing errors too early.
+
+---
+
 ## What’s next
 
-- 👉 **[Validation Modes](./concepts/validate-on)** – submit / change / blur explained
-- 👉 **[Nested Fields](./guides/nested-fields)** – paths like `user.email`
-- 👉 **[Field Arrays](./guides/field-arrays)** – dynamic lists done right
-- 👉 **[API Reference](./api/useform)** – full Formora API
+- 👉 **[Validation Modes](./concepts/validate-on)** — submit / change / blur explained
+- 👉 **[Nested Fields](./guides/nested-fields)** — paths like `user.email`
+- 👉 **[Reset](./guides/reset)** — resetting form state
+- 👉 **[API Reference](./api/useform)** — full Formora API
 
-Formora scales from simple forms to complex, dynamic UIs without changing how you think about validation.
+Formora scales from simple forms to complex UIs without changing how you reason about validation.

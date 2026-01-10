@@ -2,101 +2,40 @@
 sidebar_position: 3
 ---
 
-# Resetting Forms
+# Resetting forms
 
-Resetting is not just about values — it also affects errors and meta state.
+Resetting a form is not only about values — it also affects **errors** and **meta state**.
 
-Formora provides two reset APIs:
-
-- `reset(options?)` – reset the entire form
-- `resetField(name, options?)` – reset one field (or a nested subtree)
-
-Both APIs restore values from `initialValues` and can optionally preserve parts of state.
+Formora provides a **single, explicit reset API** that resets the entire form in a predictable way.
 
 ---
 
 ## `reset()`
 
-`reset()` restores the entire form back to `initialValues`.
+`reset()` restores the form back to its initial state.
 
 ```ts
 form.reset();
 ```
 
-### What `reset()` does by default
+---
 
-By default, `reset()`:
+## What `reset()` does
 
-- resets `values` to `initialValues`
-- clears `errors`
-- clears `touched`
-- clears `dirty`
-- clears `validating`
-- resets `submitCount`
+Calling `reset()` will:
 
-This returns the form to a fresh state.
+- reset all values back to `initialValues`
+- clear all validation errors
+- clear `touched` state
+- clear `dirty` state
+
+After a reset, the form behaves as if it was freshly mounted.
 
 ---
 
-## `resetField(name)`
+## Example: reset after successful submit
 
-`resetField` resets a single field path.
-
-```ts
-form.resetField("email");
-```
-
-Because field names are paths, you can reset nested parts too:
-
-```ts
-form.resetField("profile");
-form.resetField("profile.address.street");
-```
-
-### What `resetField()` does by default
-
-By default, `resetField(name)`:
-
-- resets the field value back to the initial value
-- clears the field error
-- clears `touched` for that field
-- clears `dirty` for that field
-- clears `validating` for that field
-
----
-
-## Keep options
-
-Sometimes you want to reset values but keep certain UI state.
-
-Formora supports keep options (exact names depend on your API), but the concept is:
-
-- keep errors
-- keep touched
-- keep dirty
-- keep validating
-
-### Example: reset but keep errors
-
-```ts
-form.reset({ keepErrors: true });
-```
-
-### Example: reset a field but keep touched
-
-```ts
-form.resetField("email", { keepTouched: true });
-```
-
-:::info
-Use keep options sparingly. Resetting should usually return the form to a clean state.
-:::
-
----
-
-## Recommended UI patterns
-
-### Clear a form after successful submit
+A common pattern is to reset the form after a successful submit.
 
 ```tsx
 <form
@@ -105,11 +44,15 @@ Use keep options sparingly. Resetting should usually return the form to a clean 
     form.reset();
   })}
 >
-  ...
+  <button type="submit">Save</button>
 </form>
 ```
 
-### “Reset” button
+---
+
+## Example: manual reset button
+
+You can also expose a reset button to the user.
 
 ```tsx
 <button type="button" onClick={() => form.reset()}>
@@ -117,30 +60,53 @@ Use keep options sparingly. Resetting should usually return the form to a clean 
 </button>
 ```
 
-### Reset one row in an array
+---
+
+## Resetting nested data
+
+Because `reset()` restores the entire form to `initialValues`, all nested data is reset automatically.
 
 ```ts
-form.resetField(`items.${index}`);
+// initialValues
+{
+  profile: {
+    name: "",
+    address: {
+      street: "",
+    },
+  },
+}
+
+// after reset()
+{
+  profile: {
+    name: "",
+    address: {
+      street: "",
+    },
+  },
+}
 ```
 
-This restores the item to its original value (from `initialValues`).
+There is currently **no per-field or partial reset API**.
 
 ---
 
-## Notes for async validation
+## Common mistakes
 
-If a field is currently validating asynchronously, reset:
+:::warning
+Do not try to manually clear parts of `form.values`, `form.errors`, or meta state.
 
-- clears its validating state
-- invalidates in-flight async work
-
-This prevents late async results from reintroducing errors after reset.
+Always use `reset()` to return the form to a clean state.
+:::
 
 ---
 
 ## Summary
 
-- `reset()` restores the full form to `initialValues`
-- `resetField(name)` resets a field or nested subtree
-- keep options allow preserving selected state
-- reset invalidates async work to prevent stale results
+- `reset()` is the only reset API
+- it resets values, errors, touched, and dirty state
+- nested data is reset automatically
+- partial or per-field resets are not supported yet
+
+This explicit behavior keeps reset logic predictable and easy to reason about.

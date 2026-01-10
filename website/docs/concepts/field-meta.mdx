@@ -2,11 +2,11 @@
 sidebar_position: 2
 ---
 
-# Field Meta
+# Field meta
 
 Field meta describes **how a field has been interacted with**, not whether its value is valid.
 
-Formora intentionally separates **meta state** from **validation** so UI behavior stays predictable, consistent, and easy to reason about.
+Formora intentionally separates **interaction state** from **validation** so that UI behavior remains predictable and under your control.
 
 ---
 
@@ -16,22 +16,43 @@ Field meta answers questions like:
 
 - Has the user interacted with this field?
 - Has its value changed from the initial value?
-- Is async validation currently running?
 
-It does **not** decide whether a value is correct.
+It does **not** answer:
+
+- Is the value correct?
+- Should an error be shown?
+
+Those decisions belong to **validation** and **UI logic**, not meta state.
 
 ---
 
-## Meta properties
+## Available meta state
 
-### `touched`
+Formora exposes two pieces of field meta:
 
-`touched` becomes `true` when a field:
+- `touched`
+- `dirty`
 
-- loses focus (`blur`)
-- is manually marked as touched
+Both follow the same **nested shape** as `values` and `errors`.
 
-`touched` means _the user has interacted with the field_.
+---
+
+## `touched`
+
+`touched` becomes `true` when a field **loses focus** (`blur`).
+
+This means:
+
+- the user has interacted with the field
+- the field was focused at least once
+
+```tsx
+<input {...form.register("email")} />;
+
+{
+  form.touched?.email && <span>Field was touched</span>;
+}
+```
 
 :::info
 A touched field is **not necessarily invalid**.
@@ -39,69 +60,83 @@ A touched field is **not necessarily invalid**.
 
 ---
 
-### `dirty`
+## `dirty`
 
 `dirty` indicates whether the current value differs from `initialValues`.
 
-- comparison is value-based, not event-based
-- works for nested paths (`profile.email`)
-- works for arrays (`items.0.name`)
+Important characteristics:
 
-When array items are moved or reordered, **dirty state moves with the item**, not the index.
+- value-based comparison (not event-based)
+- works with nested paths (`profile.email`)
+- works with arrays (`items.0.name`)
 
----
+```tsx
+<input {...form.register("email")} />;
 
-### `validating`
-
-`validating` is `true` while async validation is in progress for a field.
-
-This flag is cleared automatically when:
-
-- the field value changes
-- an array item is removed
-- array indices are shifted (move / swap)
-
-This prevents stale async UI states.
-
----
-
-### `error`
-
-`error` is a string produced by validation rules.
-
-- errors exist only at leaf nodes
-- errors may exist even if they are not visible yet
-
-Validation decides **what** the error is — not **when** it is shown.
+{
+  form.dirty?.email && <span>Value was modified</span>;
+}
+```
 
 ---
 
 ## Error visibility vs validation
 
-Formora strictly separates two responsibilities:
+Formora separates responsibilities:
 
-| Responsibility  | Controlled by           |
-| --------------- | ----------------------- |
-| What is wrong   | validation rules        |
-| When to show it | `shouldShowError(name)` |
+| Concern            | Controlled by                                   |
+| ------------------ | ----------------------------------------------- |
+| What is invalid    | validation rules (`required`, `validate`, etc.) |
+| When to show error | **your UI logic**                               |
 
-This separation allows consistent UX across all validation modes.
+Formora exposes:
+
+- `errors` — what is invalid
+- `touched` / `dirty` — how the user interacted
+
+You decide when errors are visible.
+
+### Common patterns
+
+#### Show errors after blur (recommended for `blur` mode)
 
 ```tsx
-const meta = form.getFieldMeta("email");
+<input {...form.register("email", { required: "Email is required" })} />;
 
-if (form.shouldShowError("email")) {
-  return <p>{meta.error}</p>;
+{
+  form.touched?.email && form.errors?.email && (
+    <p>{String(form.errors.email)}</p>
+  );
 }
 ```
 
-You should **never** reimplement visibility rules manually.
+#### Show errors immediately (live feedback)
+
+```tsx
+{
+  form.errors?.email && <p>{String(form.errors.email)}</p>;
+}
+```
+
+---
+
+## What Formora does NOT track
+
+To keep behavior predictable, Formora does **not** track:
+
+- async validation state
+- per-field loading state
+- automatic error visibility rules
+
+These are application-level concerns.
 
 ---
 
 ## Summary
 
-- Meta state describes user interaction, not correctness
-- Validation produces errors
-- `shouldShowError` controls UX timing
-- Meta state stays aligned during array operations
+- `touched` tells you if a field was interacted with
+- `dirty` tells you if a value changed from its initial value
+- Meta state does not imply validity
+- You control when and how errors are shown
+
+This explicit separation avoids hidden UX rules and makes complex forms easier to reason about.

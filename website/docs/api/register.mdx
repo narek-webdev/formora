@@ -2,19 +2,16 @@
 sidebar_position: 2
 ---
 
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
-
 # `register(name, rules)`
 
 `register` connects an input to Formora.
 
-It returns props for a controlled input (`name`, `value`, `onChange`, `onBlur`) and ensures:
+As a developer, you use it to:
 
-- values update correctly
-- validation runs according to `validateOn`
-- `touched`, `dirty`, and `validating` are tracked
-- errors are stored at the correct path
+- bind an input to `values[name]`
+- update the value on change
+- mark the field as touched on blur
+- run validation according to `validateOn`
 
 ---
 
@@ -24,8 +21,13 @@ It returns props for a controlled input (`name`, `value`, `onChange`, `onBlur`) 
 register(
   name: string,
   rules?: {
+    required?: string;
+    minLength?: { value: number; message: string };
+    maxLength?: { value: number; message: string };
+    pattern?: { value: RegExp; message: string };
+    min?: { value: number; message: string };
+    max?: { value: number; message: string };
     validate?: (value: unknown, values: any) => string | undefined;
-    validateAsync?: (value: unknown, values: any) => Promise<string | undefined>;
   }
 ): {
   name: string;
@@ -36,14 +38,14 @@ register(
 ```
 
 :::info
-Return `undefined` from validators when the field is valid. Return a string when invalid.
+Validation is **sync**. Return `undefined` when valid, or a `string` error message when invalid.
 :::
 
 ---
 
 ## `name` is a path
 
-Formora treats field names as paths.
+Formora treats field names as **paths**.
 
 Examples:
 
@@ -51,20 +53,68 @@ Examples:
 - `profile.address.street`
 - `items.0.name`
 
-This is how Formora supports nested objects and arrays without special APIs.
+This is how nested objects and arrays work without special APIs.
 
 ---
 
-## Sync validation (`validate`)
+## Minimal usage
 
-Use `validate` for fast, synchronous rules.
+```tsx
+<input {...form.register("email")} />
+```
+
+You’ll typically pair it with validation rules:
 
 ```tsx
 <input
   {...form.register("email", {
-    validate: (value) => {
-      const v = String(value ?? "").trim();
-      return v ? undefined : "Email is required";
+    required: "Email is required",
+    pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
+  })}
+/>;
+{
+  form.errors?.email && <p>{String(form.errors.email)}</p>;
+}
+```
+
+---
+
+## Built-in rules (recommended)
+
+Prefer these for common cases:
+
+- `required`
+- `minLength`, `maxLength`
+- `pattern`
+- `min`, `max`
+
+Example:
+
+```tsx
+<input
+  type="password"
+  {...form.register("password", {
+    required: "Password is required",
+    minLength: { value: 6, message: "Minimum 6 characters" },
+  })}
+/>
+```
+
+---
+
+## Custom validation (advanced)
+
+Use `validate` when the built-in rules aren’t enough.
+
+```tsx
+<input
+  {...form.register("password", {
+    validate: (value, values) => {
+      const v = String(value ?? "");
+      if (!v) return "Password is required";
+      if (v.length < 6) return "Minimum 6 characters";
+      if (v.includes("password")) return "Too easy";
+      return undefined;
     },
   })}
 />
@@ -72,12 +122,12 @@ Use `validate` for fast, synchronous rules.
 
 ### Access to all values
 
-The validator also receives the full values object as the second argument.
+`validate` receives the full values object as the second argument (useful for cross-field rules).
 
 ```ts
 validate: (value, values) => {
-  if (String(value ?? "") !== String(values.confirmEmail ?? "")) {
-    return "Emails do not match";
+  if (String(value ?? "") !== String(values.confirmPassword ?? "")) {
+    return "Passwords do not match";
   }
   return undefined;
 };
@@ -85,125 +135,87 @@ validate: (value, values) => {
 
 ---
 
-## Async validation (`validateAsync`)
+## Handling common input types
 
-Use `validateAsync` for server checks (username availability, coupon codes, etc.).
+Formora supports common DOM inputs directly through `register`.
+
+### Checkbox → boolean
+
+```tsx
+<input type="checkbox" {...form.register("acceptTerms")} />
+```
+
+### Radio
+
+⚠️ **Important:** put `value="..."` **after** `register()` so the radio value is not overridden.
+
+```tsx
+<input type="radio" {...form.register("plan")} value="basic" />
+<input type="radio" {...form.register("plan")} value="pro" />
+```
+
+### Select (single)
+
+```tsx
+<select {...form.register("country")}>...</select>
+```
+
+### Select (multiple) → `string[]`
+
+```tsx
+<select multiple {...form.register("tags")}>
+  ...
+</select>
+```
+
+### Number inputs
+
+Browsers often provide number values as strings. If you need numeric logic, coerce inside `validate` or on submit.
 
 ```tsx
 <input
-  {...form.register("username", {
-    validateAsync: async (value, values) => {
-      const v = String(value ?? "").trim();
-      if (!v) return "Username is required";
-
-      const res = await fetch(`/api/username?value=${encodeURIComponent(v)}`);
-      const data = await res.json();
-
-      return data.available ? undefined : "Username is taken";
+  type="number"
+  {...form.register("age", {
+    validate: (v) => {
+      if (!v) return "Required";
+      const n = Number(v);
+      if (Number.isNaN(n)) return "Invalid number";
+      if (n < 18) return "Must be 18+";
+      return undefined;
     },
   })}
 />
 ```
 
-:::warning
-In `change` mode, prefer debounced async validation (Formora supports `debounceMs`).
-:::
-
 ---
 
-## Stale async protection
+## Error visibility (developer choice)
 
-Async validation can resolve out of order.
+Formora stores errors in `form.errors`. You decide **when** to show them.
 
-Formora protects you automatically:
+Common patterns:
 
-- if the value changes, older async results are ignored
-- if an array item is removed or re-ordered, async validations are invalidated
+- show immediately (live forms)
+- show after blur (`touched`)
+- show after submit (submit mode)
 
-This prevents errors attaching to the wrong item after array operations.
-
----
-
-## Showing errors (recommended pattern)
-
-Formora separates:
-
-- **validation** (producing `errors`)
-- **visibility** (when UI should display them)
-
-Use `shouldShowError` for consistent UX:
+Example (blur UX):
 
 ```tsx
-<input {...form.register("email", { validate: ... })} />
-{form.shouldShowError("email") && <p>{form.errors.email}</p>}
-```
-
-Or use `getFieldMeta`:
-
-```tsx
-const meta = form.getFieldMeta("email");
-return meta.error && form.shouldShowError("email") ? <p>{meta.error}</p> : null;
-```
-
----
-
-## Handling different input types
-
-`register` is designed around typical text-like inputs.
-
-For checkboxes, numbers, or custom components, you can use `setValue` manually.
-
-<Tabs groupId="inputs">
-  <TabItem value="checkbox" label="Checkbox" default>
-
-```tsx
-<input
-  type="checkbox"
-  checked={!!form.values.acceptTerms}
-  onChange={(e) => form.setValue("acceptTerms", e.target.checked)}
-  onBlur={() => form.setTouched("acceptTerms", true)}
-/>;
+<input {...form.register("email", { required: "Email is required" })} />;
 {
-  form.shouldShowError("acceptTerms") && <p>{form.errors.acceptTerms}</p>;
+  form.touched?.email && form.errors?.email && (
+    <p>{String(form.errors.email)}</p>
+  );
 }
 ```
-
-  </TabItem>
-  <TabItem value="number" label="Number">
-
-```tsx
-<input
-  type="number"
-  value={form.values.age ?? ""}
-  onChange={(e) => form.setValue("age", Number(e.target.value))}
-  onBlur={() => form.setTouched("age", true)}
-/>
-```
-
-  </TabItem>
-  <TabItem value="custom" label="Custom component">
-
-```tsx
-<MySelect
-  value={form.values.country}
-  onChange={(value) => form.setValue("country", value)}
-  onBlur={() => form.setTouched("country", true)}
-/>
-```
-
-  </TabItem>
-</Tabs>
-
-:::tip
-If you often need special input handling, you can build a tiny wrapper component that integrates with Formora.
-:::
 
 ---
 
 ## Summary
 
-- `register` connects inputs to Formora
-- use `validate` for sync rules
-- use `validateAsync` for server checks
-- Formora protects you from stale async results automatically
-- use `shouldShowError` to keep error visibility rules consistent
+- `register` connects an input to Formora
+- `name` is a path (nested fields supported)
+- prefer built-in rules (`required`, `minLength`, `pattern`, etc.)
+- use `validate` for advanced/custom logic
+- checkbox/radio/select/multi-select are supported (see examples above)

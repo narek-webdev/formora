@@ -2,9 +2,9 @@
 sidebar_position: 1
 ---
 
-# Formora
+# ✨ Formora
 
-**Formora** is a tiny but powerful form engine for React, designed for **predictable validation**, **safe async handling**, and **complex real‑world forms**.
+**Formora** is a tiny, headless form state and validation engine for React, built for **predictable behavior**, **explicit rules**, and **real‑world forms**.
 
 Formora focuses on _clarity and correctness_ instead of magic. Every behavior is explicit, testable, and easy to reason about.
 
@@ -12,71 +12,89 @@ Formora focuses on _clarity and correctness_ instead of magic. Every behavior is
 
 ## Why Formora?
 
-Most forms fail not because of missing features, but because of **edge cases**:
+Most form bugs don’t come from missing features — they come from **unclear behavior**:
 
-- async validation results arriving out of order
-- array fields shifting indices and breaking errors
-- unclear UX rules for when errors should appear
-- deeply nested values becoming hard to manage
+- when exactly should validation run?
+- why is this error still here?
+- why did a field suddenly become dirty?
+- why did removing a field break the form state?
 
-Formora is built to handle these cases **by design**.
+Formora is built to make these rules **visible, predictable, and debuggable**.
 
 ---
 
-## Core concepts
+## Core ideas
 
-### 🧭 Validation modes
+### 🧭 Explicit validation timing
 
-Choose **one clear rule** for when validation happens:
+You always know **when validation runs**. Choose one rule for the entire form:
 
-- **`submit`** – validate only on submit (classic forms)
-- **`change`** – validate on every change (live feedback)
-- **`blur`** – validate when a field is left (best UX for most apps)
+- **`submit`** — validate only on submit (classic forms)
+- **`change`** — validate on every change (live feedback)
+- **`blur`** — validate when a field loses focus (great UX)
 
 This is controlled by the `validateOn` option.
 
 ---
 
-### 🔁 Safe async validation
+### 🧠 Synchronous, predictable validation
 
-Formora automatically protects you from **stale async results**.
+Formora validation is **synchronous** and explicit:
 
-If a value changes or an array item is removed, pending async validations are **invalidated**, so outdated results can never overwrite newer state.
+- validation functions return `string | undefined`
+- no hidden async side effects
+- no race conditions
+
+This makes validation behavior easy to understand, test, and debug.
+
+> Async validation is planned for a future release and will be documented separately.
 
 ---
 
-### 🧩 Nested fields & paths
+### 🧩 Nested fields by default
 
-Formora treats field names as **paths**:
+Formora treats field names as **paths**, not flat strings:
 
 ```ts
 user.email
-address.street
+profile.address.street
 items.0.name
 ```
 
-This makes nested objects and arrays first‑class citizens, without special APIs.
+Nested objects and arrays work naturally, without special APIs.
 
 ---
 
-### 📦 Field arrays done right
+### 📦 Real form state
 
-Dynamic lists are hard. Formora handles them correctly:
+Formora tracks form state you actually care about:
 
-- append / remove / insert / replace
-- move / swap
-- errors, touched, dirty, validating **move with the item**
+- **values** — current form data
+- **errors** — validation errors
+- **touched** — set on blur
+- **dirty** — differs from initial values
 
-No orphaned errors. No broken indices.
+These states are updated **consistently and predictably**, even when fields are added or removed.
+
+---
+
+### 🔁 Conditional fields that behave correctly
+
+When a field is unmounted:
+
+- its errors are cleared
+- it no longer affects form state
+
+No stale errors. No ghost values.
 
 ---
 
 ## What you can do next
 
-- 👉 **[Getting Started](./getting-started)** – install and build your first form
-- 👉 **[Validation Modes](./concepts/validate-on)** – understand submit / change / blur
-- 👉 **[Field Arrays](./guides/field-arrays)** – build dynamic lists safely
-- 👉 **[API Reference](./api/useform)** – detailed method and option docs
+- 👉 **[Getting Started](./getting-started)** — install and build your first form
+- 👉 **[Validation Modes](./concepts/validate-on)** — understand submit / change / blur
+- 👉 **[Nested Fields](./guides/nested-fields)** — work with complex data safely
+- 👉 **[API Reference](./api/useform)** — detailed hook and method docs
 
 ---
 
@@ -88,4 +106,4 @@ Formora prefers:
 - predictable state over hidden side effects
 - correctness over convenience
 
-If you value **control, clarity, and long‑term maintainability**, Formora is for you.
+If you value **control, clarity, and long‑term maintainability**, Formora is built for you.

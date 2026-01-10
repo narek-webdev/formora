@@ -2,27 +2,48 @@
 sidebar_position: 1
 ---
 
-import Tabs from "@theme/Tabs";
-import TabItem from "@theme/TabItem";
-
 # `useForm`
 
-`useForm` is the main entrypoint to Formora. It creates a form controller that manages:
+`useForm` is the main entry point of Formora.
 
-- `values`
-- `errors`
-- `touched` / `dirty`
-- `validating` (async validation state)
-- submission handling and validation timing (`validateOn`)
+It creates a **form controller** that manages form state and validation in a predictable, explicit way.
+
+---
+
+## What `useForm` does
+
+As a developer, you can think of `useForm` as responsible for:
+
+- tracking form **values**
+- running **synchronous validation**
+- tracking **errors**, **touched**, and **dirty** state
+- telling you whether the form is currently **valid** (`isValid`)
+
+What it does **not** do:
+
+- ❌ async validation
+- ❌ network or submit state
+- ❌ UI decisions (you control when to show errors)
 
 ---
 
 ## Signature
 
 ```ts
-function useForm<TValues>(
-  options: UseFormOptions<TValues>
-): FormController<TValues>;
+function useForm<TValues>(options: {
+  initialValues: TValues;
+  validateOn?: "submit" | "change" | "blur";
+}): {
+  values: TValues;
+  errors: any;
+  touched: any;
+  dirty: any;
+  isValid: boolean;
+
+  register: (name: string, rules?: any) => any;
+  handleSubmit: (onValid: (values: TValues) => void) => (e?: any) => void;
+  reset: () => void;
+};
 ```
 
 ---
@@ -33,82 +54,37 @@ function useForm<TValues>(
 
 **Type:** `TValues`
 
-The initial form values. These values are used as the baseline for:
+Initial values for the form. These are used as the baseline for:
 
+- value initialization
+- dirty checking
 - `reset()`
-- `resetField(name)`
-- dirty checking (`dirty`)
 
-:::info
-Formora treats field names as paths, so `initialValues` can contain nested objects and arrays.
-:::
+Field names are treated as **paths**, so nested objects and arrays are supported.
 
 ---
 
 ### `validateOn`
 
-**Type:** `'submit' | 'change' | 'blur'`
+**Type:** `"submit" | "change" | "blur"`
 
-Controls when validation runs.
+Controls when validation runs:
 
-- `submit` – validate only on submit
-- `change` – validate on every change
-- `blur` – validate when a field loses focus
+- **`submit`** — validation runs only when submitting
+- **`change`** — validation runs on every change
+- **`blur`** — validation runs when a field loses focus
 
-See: **[Validation Modes](../concepts/validate-on)**.
-
----
-
-### `mode`
-
-**Type:** `'firstError' | 'all'`
-
-Controls how submit collects errors:
-
-- `firstError` – stop at the first error (faster)
-- `all` – validate all registered fields and return full error map
-
-:::tip
-Use `all` for large forms where you want to show a complete list of issues on submit.
-:::
+This option applies to the entire form.
 
 ---
 
-### `debounceMs`
-
-**Type:** `number` (optional)
-
-Debounce duration for async validation (when `validateAsync` is used).
-
-This reduces network calls in `change` mode.
-
----
-
-### `onSubmitInvalid`
-
-**Type:** `(errors: any) => void` (optional)
-
-Called when a submit occurs and the form is invalid.
-
-Useful for:
-
-- scrolling to the first error
-- focusing the first invalid field
-- showing a form-level message
-
----
-
-## Return value
-
-`useForm` returns a controller object with state + actions.
-
----
-
-## State
+## Returned state
 
 ### `values`
 
-Current values object.
+Current form values. Shape always matches `initialValues`.
+
+---
 
 ### `errors`
 
@@ -124,25 +100,43 @@ Example:
       street: "Too short",
     },
   },
-  items: [{ name: "Required" }, undefined, { name: "Too short" }],
 }
 ```
 
+---
+
 ### `touched`
 
-Nested boolean map indicating whether a field has been touched.
+Nested boolean map indicating whether a field has been touched (blurred).
+
+---
 
 ### `dirty`
 
-Nested boolean map indicating whether a field differs from `initialValues`.
+Nested boolean map indicating whether a field differs from its initial value.
 
-### `validating`
+---
 
-Nested boolean map indicating whether a field is currently async-validating.
+### `isValid`
 
-### `submitCount`
+`true` when the form has **no validation errors**.
 
-Number of times `handleSubmit` has been called.
+:::caution `isValid` is not the same as “ready to submit”
+`isValid` only means **there are no errors right now**.
+
+Depending on your `validateOn` mode, validation may not have run yet (for example, before the user types or blurs a field). In that case `errors` can be empty and `isValid` may be `true` on the first render.
+
+If you want to disable a button until required fields are filled, combine `isValid` with your own “required values present” check.
+:::
+
+Example:
+
+```tsx
+const requiredFilled = Boolean(form.values.email && form.values.password);
+const canSubmit = requiredFilled && form.isValid;
+
+<button disabled={!canSubmit}>Submit</button>;
+```
 
 ---
 
@@ -150,9 +144,14 @@ Number of times `handleSubmit` has been called.
 
 ### `register(name, rules)`
 
-Registers an input and returns props (`name`, `value`, `onChange`, `onBlur`) for a controlled input.
+Connects an input to Formora.
 
-See: **[register](./register)**.
+- binds the input value
+- updates form state on change
+- marks the field as touched on blur
+- runs validation according to `validateOn`
+
+See: **[`register`](./register)**.
 
 ---
 
@@ -160,9 +159,11 @@ See: **[register](./register)**.
 
 Returns a submit handler.
 
-- runs submit validation according to `mode`
-- if valid: calls `onValid(values)`
-- if invalid: updates `errors` and calls `onSubmitInvalid` (if provided)
+Behavior:
+
+- runs submit validation
+- if valid → calls `onValid(values)`
+- if invalid → populates `errors`
 
 Example:
 
@@ -170,129 +171,72 @@ Example:
 <form onSubmit={form.handleSubmit((values) => console.log(values))}>...</form>
 ```
 
----
-
-### `setValue(name, value, opts?)`
-
-Sets a field value by path.
-
-Common use cases:
-
-- custom inputs
-- formatting
-- setting nested values
+:::tip
+`handleSubmit` works with or without a `<form>`. You can attach it to `onSubmit` or call it from any button `onClick`.
+:::
 
 ---
 
-### `setValues(partial)`
+### `reset()`
 
-Sets multiple values via shallow merge.
+Resets the form back to `initialValues`.
 
----
+This clears:
 
-### `reset(options?)`
-
-Resets the form to `initialValues`.
-
-See: **[Reset guide](../guides/reset)** and **[Reset API](./reset)**.
-
----
-
-### `resetField(name, options?)`
-
-Resets a single field to its initial value.
-
-See: **[Reset guide](../guides/reset)** and **[Reset API](./reset)**.
+- values
+- errors
+- touched
+- dirty
 
 ---
 
-## Meta helpers
+## Common patterns: disabling a submit button
 
-### `shouldShowError(name)`
+There are usually **two** reasons to disable a submit button:
 
-Returns `true` if the UI should display an error for this field.
+1. The form is not ready (missing required values and/or has validation errors)
+2. A request is in flight (`isSubmitting`)
 
-It combines:
+Formora gives you `values`, `errors`, and `isValid`. Your app owns submit/loading state.
 
-- `validateOn`
-- touched state
-- submit state
-
-This makes error visibility rules consistent across the entire form.
-
----
-
-### `getFieldMeta(name)`
-
-Returns a meta object for a field:
-
-```ts
-{
-  touched: boolean;
-  dirty: boolean;
-  validating: boolean;
-  error?: string;
-}
-```
-
----
-
-## Field array helpers
-
-Formora provides array helpers for dynamic lists:
-
-- `append(name, value)`
-- `remove(name, index)`
-- `insert(name, index, value)`
-- `replace(name, index, value)`
-- `move(name, from, to)`
-- `swap(name, a, b)`
-
-See: **[Field Arrays guide](../guides/field-arrays)** and **[Field Arrays API](./field-arrays)**.
-
----
-
-## Examples
-
-<Tabs groupId="validateOn">
-  <TabItem value="submit" label="submit" default>
+### Pattern A (recommended): required values + `isValid` + `isSubmitting`
 
 ```tsx
-const form = useForm({
-  initialValues: { email: "" },
-  validateOn: "submit",
-});
+const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+const requiredFilled = Boolean(form.values.email && form.values.password);
+const canSubmit = requiredFilled && form.isValid && !isSubmitting;
+
+<button disabled={!canSubmit} type="submit">
+  {isSubmitting ? "Saving…" : "Submit"}
+</button>;
 ```
 
-  </TabItem>
-  <TabItem value="change" label="change">
+### Pattern B: disable until the user interacts
+
+Useful when you want to prevent submitting untouched defaults.
 
 ```tsx
-const form = useForm({
-  initialValues: { email: "" },
-  validateOn: "change",
-});
+const interacted = Boolean(
+  form.dirty?.email ||
+    form.dirty?.password ||
+    form.touched?.email ||
+    form.touched?.password
+);
+
+<button disabled={!interacted || !form.isValid}>Submit</button>;
 ```
 
-  </TabItem>
-  <TabItem value="blur" label="blur">
+### Using Formora without a `<form>`
+
+You can still validate and submit without a `<form>` element by calling `handleSubmit` from a normal button click.
 
 ```tsx
-const form = useForm({
-  initialValues: { email: "" },
-  validateOn: "blur",
+const submit = form.handleSubmit(async (values) => {
+  // do your request here
 });
+
+<button type="button" onClick={submit} disabled={!canSubmit}>
+  Submit
+</button>;
 ```
-
-  </TabItem>
-</Tabs>
-
----
-
-## Notes & guarantees
-
-- Field names are paths (e.g. `profile.email`, `items.0.name`)
-- Field arrays shift values + meta state together
-- Async validation is protected from stale results
-
-If you rely on these behaviors, keep your imports limited to the public API and avoid internal modules.

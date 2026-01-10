@@ -2,23 +2,23 @@
 sidebar_position: 1
 ---
 
-# Validation Modes (`validateOn`)
+# Validation modes (`validateOn`)
 
-Formora makes validation behavior **explicit** by requiring you to choose _when_ validation runs.
+Formora makes validation timing **explicit**. You choose _when_ validation runs, and Formora never changes this behavior behind your back.
 
 This avoids hidden rules and unpredictable UX.
 
 ---
 
-## The three modes
+## Available modes
 
-Formora supports exactly three validation modes:
+Formora supports **exactly three** validation modes:
 
-- **`submit`** – validate only when the form is submitted
-- **`change`** – validate on every value change
-- **`blur`** – validate when a field loses focus
+- **`submit`** — validate only when submitting
+- **`change`** — validate on every value change
+- **`blur`** — validate when a field loses focus
 
-You choose one mode per form using the `validateOn` option.
+You choose one mode per form:
 
 ```ts
 const form = useForm({
@@ -41,8 +41,8 @@ Use `submit` when:
 ### Behavior
 
 - No validation while typing
-- Errors appear only after submit
-- Errors stay visible until fixed or reset
+- Validation runs only on submit
+- Errors populate after submit and stay until fixed or reset
 
 ```tsx
 const form = useForm({ validateOn: "submit" });
@@ -51,6 +51,12 @@ const form = useForm({ validateOn: "submit" });
 :::info
 This mode matches traditional HTML form behavior.
 :::
+
+### Important note
+
+In `submit` mode, `isValid` may be `true` **before the first submit**, because validation has not run yet.
+
+Do not rely on `isValid` alone to disable a submit button in this mode.
 
 ---
 
@@ -68,15 +74,17 @@ Use `change` when:
 
 - Validation runs on every change
 - Errors appear immediately
-- Best combined with lightweight rules
+- Errors update as the user types
 
 ```tsx
 const form = useForm({ validateOn: "change" });
 ```
 
-:::warning
-Avoid expensive async validation in `change` mode unless debounced.
-:::
+### Important note
+
+On the first render, no validation has run yet. Until the user types, `errors` can be empty and `isValid` may be `true`.
+
+If you disable a submit button, combine `isValid` with your own checks (for example, required values present).
 
 ---
 
@@ -86,14 +94,14 @@ Avoid expensive async validation in `change` mode unless debounced.
 
 Use `blur` when:
 
-- you want the best UX balance
+- you want a balanced UX
 - users should finish typing before seeing errors
 - forms are non-trivial
 
 ### Behavior
 
 - Validation runs when a field loses focus
-- Errors appear after user finishes editing
+- Errors appear after the user finishes editing
 - Errors stay visible until fixed
 
 ```tsx
@@ -101,39 +109,61 @@ const form = useForm({ validateOn: "blur" });
 ```
 
 :::tip
-This is the default recommendation for most production forms.
+This mode works best for most real-world production forms.
 :::
+
+### Important note
+
+Just like `change` mode, `isValid` can be `true` on the first render.
+
+Use `touched`, `dirty`, or required-value checks to control UX.
 
 ---
 
-## Error visibility vs validation
+## Validation vs error visibility
 
-Validation **determines errors**.
+Validation determines **what errors exist**.
 
-Error visibility is controlled separately using:
+Error visibility is a **UI decision**.
 
-```ts
-form.shouldShowError(name);
+Formora exposes:
+
+- `errors` — what is invalid
+- `touched` — whether a field was interacted with
+
+You decide _when_ to show errors:
+
+```tsx
+// Show after blur
+{
+  form.touched?.email && form.errors?.email && (
+    <p>{String(form.errors.email)}</p>
+  );
+}
+
+// Show immediately
+{
+  form.errors?.email && <p>{String(form.errors.email)}</p>;
+}
 ```
-
-This separation allows consistent UX across all modes.
 
 ---
 
 ## Comparison
 
-| Mode   | When validation runs | UX style |
-| ------ | -------------------- | -------- |
-| submit | On submit only       | Calm     |
-| change | On every change      | Instant  |
-| blur   | On blur              | Balanced |
+| Mode   | When validation runs | Typical UX |
+| ------ | -------------------- | ---------- |
+| submit | On submit only       | Calm       |
+| change | On every change      | Instant    |
+| blur   | On blur              | Balanced   |
 
 ---
 
 ## Summary
 
-- Formora makes validation timing explicit
-- Each mode has a clear purpose
-- `blur` is recommended for most real-world apps
+- `validateOn` controls **when validation runs**
+- No mode is "better" — each serves a different UX goal
+- `blur` is recommended for most production apps
+- `isValid` reflects current errors, not user intent
 
-Choose the mode that matches **user intent**, not just convenience.
+Choose the mode that matches how you want users to experience your form.
