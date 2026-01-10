@@ -23,6 +23,17 @@ The format is based on **Keep a Changelog**, and this project follows **Semantic
 
 ---
 
+## 0.6.2
+
+### Fixed
+
+- Checkbox inputs now correctly store boolean values
+- Radio inputs ignore unchecked events and preserve selected value
+- `<select multiple>` now returns an array of selected values
+- Improved consistency for input value handling across form elements
+
+---
+
 ## [0.6.1] - 2026-01-02
 
 ### Added
